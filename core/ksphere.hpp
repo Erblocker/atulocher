@@ -18,7 +18,9 @@ namespace atulocher{
       octree::object obj;         //在八叉树中的节点
       bool           isTrue;      //正确性
       std::string    description; //值
-      knowledge(){}
+      knowledge(){
+        isTrue=true;
+      }
     };
     std::map<std::string,knowledge*> known;
     ksphere():oct(
@@ -110,6 +112,12 @@ namespace atulocher{
       kn->obj.position=p;
       known[key]=kn;
       oct.insert(&(kn->obj));
+    }
+    bool negate(const std::string & key){
+      auto it=known.find(key);
+      if(it==known.end())return false;
+      it->second->isTrue=!(it->second->isTrue);
+      return true;
     }
   };
 }
