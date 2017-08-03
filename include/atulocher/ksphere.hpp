@@ -78,7 +78,7 @@ namespace atulocher{
       char buf[4096];
       int tb;
       t==1 ? tb=1 : tb=0;
-      sprintf(buf,"+%s %s %f %f %f %d #time:%d\n",
+      snprintf(buf,4096,"+%s %s %f %f %f %d #time:%d\n",
         k.c_str(),
         v.c_str(),
         p.x,
@@ -90,7 +90,7 @@ namespace atulocher{
     }
     void writeconf(const std::string & k){
       char buf[4096];
-      sprintf(buf,"-%s #time:%d\n",k.c_str(),time(0));
+      snprintf(buf,4096,"-%s #time:%d\n",k.c_str(),time(0));
       fwrite(buf,strlen(buf),1,fd);
     }
     static void confrep(char * path){
@@ -116,6 +116,8 @@ namespace atulocher{
       fclose(fp);
     }
     public:
+    ksphere()=delete;
+    void operator=(ksphere&)=delete;
     ksphere(const char * path):oct(
       octree::vec(-10000111.0d,-10000111.0d,-10000111.0d),
       20000222.0d  //设置足够大的范围，以便于贮存数据
@@ -134,27 +136,46 @@ namespace atulocher{
       int pn;
       public:
       octree::vec position;
+      bool readonly;
+      adder()=delete;
       adder(ksphere * k):position(0,0,0){
         ks=k;
         pn=0;
+        readonly=false;
       }
       ~adder(){}
-      void mean(const std::string & m,double w){//w取负数时表示否定
+      void mean(const octree::vec & p,double w){
+        position+=p*w;//坐标乘以权重
+      }
+      bool mean(const std::string & m,double w){//w取负数时表示否定
+        //总权重必须为1,否则点可能会在球外，引起死循环
         ks->locker.Rlock();
         auto it=ks->known.find(m);
+        octree::vec * pt;
         if(it==ks->known.end()){
-          ks->locker.unlock();
-          return;
+          if(readonly){//只读
+            ks->locker.unlock();
+            return false;
+          }
+          //如果没有
+          //记住，没有这个
+          octree::vec posi;
+          ks->addaxion(m,"unknow;",&posi);
+          pt=&posi;
+        }else{
+          pt=&it->second->obj.position;
         }
-        position+=it->second->obj.position*w;//坐标乘以权重
+        mean(*pt,w);
         pn++;
         ks->locker.unlock();
+        return true;
       }
       static double m(double a,int b){
         int bf=a/b;
         return a-b*bf;
       }
       bool add(const std::string & key,const std::string & val){
+        if(readonly)return false;
         if(pn==0)
           return ks->addaxion(key,val);
           //没有任何依据的命题，当然就是公理啦
@@ -202,6 +223,9 @@ namespace atulocher{
       return (p*norm*10000000.0d);
     }
     bool addaxion(const std::string & key,const std::string & value){
+      return addaxion(key,value);
+    }
+    bool addaxion(const std::string & key,const std::string & value,octree::vec * posi){
       locker.Wlock();
       //添加一个基本命题（好像叫做公理）
       if(known.find(key)!=known.end()){
@@ -243,6 +267,9 @@ namespace atulocher{
       oct.insert(&(kn->obj));
       writeconf(key,value,p,true);
       locker.unlock();
+      if(posi){
+        *posi=p;
+      }
       return true;
     }
     bool negate(const std::string & key){
