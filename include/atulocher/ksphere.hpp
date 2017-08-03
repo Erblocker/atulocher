@@ -6,8 +6,10 @@
 #include <string.h>
 #include <map>
 #include <math.h>
-#include <stdio.h>
 #include <sstream>
+#include <iostream>
+#include <ctime>
+#include <stdio.h>
 /*
 * 知识球：
 ** 一种用向量来学习并进行逻辑思维的方法
@@ -27,6 +29,9 @@ namespace atulocher{
         key=k;
         isTrue=true;
         obj.value=this;
+        obj.onfree=[](octree::object * self){
+          delete (knowledge*)(self->value);
+        };
       }
     };
     private:
@@ -38,6 +43,8 @@ namespace atulocher{
       int tb;
       std::string k;
       std::string v;
+      //printf("p1");
+      if(strlen(str)<1)return false;
       std::istringstream iss(str+1);
       if(str[0]=='+'){
         iss>>k;
@@ -51,7 +58,9 @@ namespace atulocher{
         kn->obj.position=posi;
         kn->description=v;
         kn->isTrue=t;
+        //printf("p2\n");
         if(oct.insert(&(kn->obj))){
+          //printf("ins\n");
           known[k]=kn;
         }else{
           delete kn;
@@ -60,12 +69,14 @@ namespace atulocher{
       }else
       if(str[0]=='-'){
         iss>>k;
+        //printf("p3");
         auto it=known.find(k);
+        //printf("p4");
         if(it==known.end()){
-          locker.unlock();
           return false;
         }
         it->second->isTrue=!(it->second->isTrue);
+        //printf("p5");
         return true;
       }
       return false;
@@ -94,9 +105,10 @@ namespace atulocher{
       fwrite(buf,strlen(buf),1,fd);
     }
     static void confrep(char * path){
-      auto p=path;
+      //printf("cc\n");
+      char * p=path;
       while(*p){
-        if(*p=='#'){
+        if(*p=='#' || *p=='\n'){
           *p='\0';
           return;
         }
@@ -108,11 +120,18 @@ namespace atulocher{
       fp=fopen(path,"r");
       if(fp==NULL)return;
       char buf[4096];
+      //printf("rr\n");
       while(!feof(fp)){
-        fgets(buf,4096,fd);
+        //printf("re\n");
+        bzero(buf,4096);
+        fgets(buf,4096,fp);
+        //printf("rl\n");
         confrep(buf);
+        if(strlen(buf)<1)continue;
+        //printf("rp\n");
         readconfigline(buf);
       }
+      //printf("end\n");
       fclose(fp);
     }
     public:
@@ -122,13 +141,20 @@ namespace atulocher{
       octree::vec(-10000111.0d,-10000111.0d,-10000111.0d),
       20000222.0d  //设置足够大的范围，以便于贮存数据
     ){
+      srand(time(0));
       readconfig(path);
+      //printf("load fd\n");
       fd=fopen(path,"a");
+      //printf("lded\n");
     }
     ~ksphere(){
       fclose(fd);
-      for(auto it=known.begin();it!=known.end();it++){
-        delete (it->second);
+    }
+    static double randn(){
+      if(rand()>(RAND_MAX/2)){
+        return  1.0d;
+      }else{
+        return -1.0d;
       }
     }
     class adder{//添加器
@@ -180,7 +206,7 @@ namespace atulocher{
           return ks->addaxion(key,val);
           //没有任何依据的命题，当然就是公理啦
         ks->locker.Wlock();
-        if(ks->known.find(key)!=ks->known.end()){
+        if(ks->known[key]!=NULL){
           ks->locker.unlock();
           return false;//已经存在
         }
@@ -202,9 +228,9 @@ namespace atulocher{
         kn->description=val;
         ins:
           auto p=position;
-          p.x+=m(rand.flo()/100000.0d,30);
-          p.y+=m(rand.flo()/100000.0d,30);
-          p.z+=m(rand.flo()/100000.0d,30);
+          p.x+=rand()/(RAND_MAX/30.0d)*randn();
+          p.y+=rand()/(RAND_MAX/30.0d)*randn();
+          p.z+=rand()/(RAND_MAX/30.0d)*randn();
           kn->obj.position=p;
         if(!(ks->oct.insert(&(kn->obj))))goto ins;
         ks->known[key]=kn;
@@ -214,30 +240,36 @@ namespace atulocher{
       }
     };
     octree::vec randposi(){//随机生成一个球面上的点
+      beg:
       octree::vec p(
-        (rand.flo()),
-        (rand.flo()),
-        (rand.flo())
+        rand()*randn(),
+        rand()*randn(),
+        rand()*randn()
       );
-      auto norm=p.invnorm();
-      return (p*norm*10000000.0d);
+      auto norm=p.norm();
+      if(norm==0.0d)goto beg;
+      auto res=(p/norm)*10000000.0d;
+      //printf("%f,%f,%f norm:%f\n",res.x,res.y,res.z,norm);
+      return res;
     }
-    bool addaxion(const std::string & key,const std::string & value){
-      return addaxion(key,value);
-    }
-    bool addaxion(const std::string & key,const std::string & value,octree::vec * posi){
+    bool addaxion(const std::string & key,const std::string & value,octree::vec * posi=NULL){
+      //printf("p1\n");
       locker.Wlock();
+      //printf("r1\n");
       //添加一个基本命题（好像叫做公理）
-      if(known.find(key)!=known.end()){
+      if(known[key]!=NULL){
+        //printf("have key\n");
         locker.unlock();
         return false;//已经存在
       }
+      //printf("hh\n");
       //创建节点，不解释
       auto kn=new knowledge(key);
       kn->description=value;
       struct of_t{
         int num;
       }ot;
+      //printf("p2\n");
       get_position:
         auto p=randposi();//随机生成一个球面坐标
         ot.num=0;
@@ -249,7 +281,7 @@ namespace atulocher{
           octree::vec(100 ,100 , 100)+p,&ot
         );//搜索附近的点
         if(ot.num>0)goto get_position;//存在，重新产生坐标
-        
+        //printf("p3\n");
         ot.num=0;
         oct.find(
           [](octree::object * o,void*ot){
@@ -265,8 +297,10 @@ namespace atulocher{
       kn->obj.position=p;
       known[key]=kn;
       oct.insert(&(kn->obj));
+      //printf("p4\n");
       writeconf(key,value,p,true);
       locker.unlock();
+      //printf("p5\n");
       if(posi){
         *posi=p;
       }

@@ -1,6 +1,7 @@
 #ifndef atulocher_vec3
 #define atulocher_vec3
 #include "math.hpp"
+#include <math.h>
 namespace atulocher{
   template<typename T> class vec3{
     public:
@@ -86,7 +87,7 @@ namespace atulocher{
       );
     }
     T norm()const{
-      return math::sqrt((x*x)+(y*y)+(z*z));
+      return sqrt((x*x)+(y*y)+(z*z));
     }
     T invnorm()const{
       return math::invsqrt((x*x)+(y*y)+(z*z));

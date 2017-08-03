@@ -171,8 +171,9 @@ namespace octree{
         remove(i);
       }
     }
-    bool insert(octval * d){
+    bool insert(octval * d,int maxdeep=64){
       //printf("insert ");
+      if(maxdeep<=0)return false;
       if(d==NULL)return false;
       //printf("ins begin ");
       if(!isinbox(d->position))return false;
@@ -190,8 +191,8 @@ namespace octree{
         
         createNode(ar);
         
-        child[ar].val.node->insert(buf);
-        return child[ar].val.node->insert(d);
+        child[ar].val.node->insert(buf,maxdeep-1);
+        return child[ar].val.node->insert(d,maxdeep-1);
       
       }else //isnode
       if(child[ar].mode==mode_Node){
@@ -328,6 +329,7 @@ namespace octree{
     }
     bool insert(octreeNode::octval * d){
       locker.Wlock();
+      //printf("(%f,%f,%f)\n",d->position.x,d->position.y,d->position.z);
       auto r= tree->insert(d);
       locker.unlock();
       return r;
