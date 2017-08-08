@@ -104,17 +104,6 @@ namespace atulocher{
       snprintf(buf,4096,"-%s #time:%d\n",k.c_str(),time(0));
       fwrite(buf,strlen(buf),1,fd);
     }
-    static void confrep(char * path){
-      //printf("cc\n");
-      char * p=path;
-      while(*p){
-        if(*p=='#' || *p=='\n'){
-          *p='\0';
-          return;
-        }
-        p++;
-      }
-    }
     void readconfig(const char * path){
       FILE * fp=NULL;
       fp=fopen(path,"r");
@@ -135,6 +124,17 @@ namespace atulocher{
       fclose(fp);
     }
     public:
+    static void confrep(char * path){
+      //printf("cc\n");
+      char * p=path;
+      while(*p){
+        if(*p=='#' || *p=='\n'){
+          *p='\0';
+          return;
+        }
+        p++;
+      }
+    }
     ksphere()=delete;
     void operator=(ksphere&)=delete;
     ksphere(const char * path):oct(
@@ -148,7 +148,7 @@ namespace atulocher{
       //printf("lded\n");
     }
     ~ksphere(){
-      fclose(fd);
+      if(fd)fclose(fd);
     }
     static double randn(){
       if(rand()>(RAND_MAX/2)){
@@ -210,11 +210,16 @@ namespace atulocher{
           ks->locker.unlock();
           return false;//已经存在
         }
-        //这一部分已经被取消
+        //注：这一部分已经被取消
         //原因是：根本没啥用
         //不合情理的命题还是存在
         //不过基本上都分布于球心附近
+        //反正记住，越靠近（0,0,0）的命题越不靠谱
         //搜索时避开就行了
+        //////////////////////////////////
+        //这里也可以给“理解”这个词语下一个定义了：
+        //  能够将彼此之间无关的数据转化为彼此之间能够比较远近距离的数据
+        //////////////////////////////////
         //if(position==octree::vec(0,0,0)){
           //ks->locker.unlock();
           //return false;
@@ -223,6 +228,7 @@ namespace atulocher{
           ////又大又小？
           ////又高又矮？
           ////还是啥不符合情理的东西？
+          //注：对立命题连线中点当然在球心上
         //}
         auto kn=new knowledge(key);
         kn->description=val;

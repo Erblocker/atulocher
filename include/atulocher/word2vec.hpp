@@ -3,9 +3,74 @@
 #include "ksphere.hpp"
 #include <list>
 #include <vector>
+#include <map>
 #include "cppjieba/Jieba.hpp"
 namespace atulocher{
-  class vord2vec:cppjieba::Jieba{
+  class wlist{
+    RWMutex locker;
+    std::map<std::string,double> lst;
+    void readconfigline(const char * str){
+      std::istringstream iss(str);
+      double w;
+      std::string s;
+      iss>>s;
+      iss>>w;
+      if(s.empty())return;
+      lst[s]=w;
+    }
+    void readconfig(const char * path){
+      FILE * fp=NULL;
+      fp=fopen(path,"r");
+      if(fp==NULL)return;
+      char buf[4096];
+      while(!feof(fp)){
+        bzero(buf,4096);
+        fgets(buf,4096,fp);
+        ksphere::confrep(buf);
+        if(strlen(buf)<1)continue;
+        readconfigline(buf);
+      }
+      fclose(fp);
+    }
+    void writeconfig(const char * str,double weig){
+      char buf[4096];
+      snprintf(buf,4096,"%s %f #time:%d\n",
+        str,
+        weig,
+        time(0)
+      );
+      fwrite(buf,strlen(buf),1,fd);
+    }
+    FILE * fd;
+    public:
+    wlist(const char * path){
+      readconfig(path);
+      fd=fopen(path,"a");
+    }
+    ~wlist(){
+      if(fd)fclose(fd);
+    }
+    void set(std::string kw,double w){
+      locker.Wlock();
+      lst[kw]=w;
+      writeconfig(kw.c_str(),w);
+      locker.unlock();
+    }
+    bool get(std::string kw,double * w){
+      locker.Rlock();
+      auto it=lst.find(kw);
+      bool res;
+      if(it==lst.end()){
+        res=false;
+      }else{
+        res=true;
+        *w=it->second;
+      }
+      locker.unlock();
+      return res;
+    }
+  };
+  class vord2vec:cppjieba::Jieba,wlist{
     //汉字转向量
     //使用前请自己准备cppjieba字典
     //还有足够的数据来训练思维球
@@ -24,7 +89,8 @@ namespace atulocher{
       }
       return r;
     }
-    bool numcheck(const std::string &word,std::list<octree::vec> & res){
+    bool numcheck(const std::string &word,std::list< std::pair<std::string,octree::vec> > & res){
+      typedef std::pair<std::string,octree::vec> wp;
       std::string w=word;
       if(!cleanNum(w))return false;
       std::istringstream iss(w);
@@ -34,7 +100,7 @@ namespace atulocher{
         iss>>vv.y;
         iss>>vv.z;
       //}
-      res.push_back(vv);
+      res.push_back(wp(word,vv));
     }
     public:
     ksphere ks;
@@ -44,12 +110,13 @@ namespace atulocher{
       const char * b,
       const char * c,
       const char * d,
-      const char * e
-    ):ks(path),Jieba(a,b,c,d,e){
+      const char * e,
+      const char * w
+    ):ks(path),Jieba(a,b,c,d,e),wlist(w){
       
     }
     void learn(
-      const std::string & word,
+      std::string & word,
       const std::list< std::pair<std::string,double> > & mean
     ){
       ksphere::adder ar(&ks);
@@ -64,7 +131,13 @@ namespace atulocher{
       memcpy(sbuf,v.c_str(),3500);
       ar.add(word,sbuf);
     }
-    octree::vec wordToVec(const std::string &word){
+    inline void setWeighter(std::string s,double w){
+      //定义词语权重设置器
+      //可用于定义否定词，语气词等
+      //例：setWeighter("否",-1.0d);
+      wlist::set(s,w);
+    }
+    octree::vec wordToVec(std::string &word){
       if(word.empty())return octree::vec(0,0,0);
       auto p=ks.find(word.c_str());
       if(p)return p->obj.position;  //有现成的，直接返回
@@ -72,7 +145,7 @@ namespace atulocher{
       this->Cut(word, words, true);
       double exp;
       if(words.size()==0)
-        return octree::vec(0,0,0);
+        return octree::vec(0,0,0);  //无法分词
       else
         exp=1.0d/(double)words.size();
       ksphere::adder ar(&ks);
@@ -88,35 +161,43 @@ namespace atulocher{
           if(se.size()==0)
             continue;
           else{
+            double wr=1.0d;
+            double wbuf;
             e=1.0d/(double)se.size();
             octree::vec S;
             for(auto seg:se){
+              if(wlist::get(seg,&wbuf)){
+                wr*=wbuf;
+                continue;
+              }
               auto kk=ks.find(seg);
               if(kk)
                 S+=kk->obj.position*e;
             }
-            ar.mean(S,exp);
+            ar.mean(S,exp*wr);
           }
         }
       }
+      return ar.position;
     }
     void sentenceToVecs(
-      const std::string &word,
-      std::list<octree::vec> & res
+      std::string word,
+      std::list< std::pair<std::string,octree::vec> > & res
     ){
+      typedef std::pair<std::string,octree::vec> wp;
       std::vector<std::string> words;
       CutAll(word, words);
       for(auto it:words){
         auto v=wordToVec(it);
         octree::vec buf;
-        if(v==octree::vec(0,0,0)){
-          if(numcheck(it,res)){
+        if(v==octree::vec(0,0,0)){//无法解析
+          if(numcheck(it,res)){   //尝试当作数字
           }else{
-            memcpy(&buf,it.c_str(),sizeof(buf));
-            res.push_back(octree::vec(buf));
+            memcpy(&buf,it.c_str(),sizeof(buf));//还是不能，强制转换
+            res.push_back(wp(it,octree::vec(buf)));
           }
         }else{
-          res.push_back(v);
+          res.push_back(wp(it,v));
         }
       }
     }

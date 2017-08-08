@@ -24,11 +24,10 @@ namespace atulocher{
       z=zt;
     }
     bool operator==(const vec3<T> &i)const{
-      if(x==i.x)
-      if(x==i.y)
-      if(x==i.z)
+      if(x!=i.x)return false;
+      if(y!=i.y)return false;
+      if(z!=i.z)return false;
       return true;
-      return false;
     }
     void operator()(T xt,T yt,T zt){
       init(xt,yt,zt);
@@ -106,7 +105,7 @@ namespace atulocher{
         (z*p.z)
       );
     }
-    void GeoHash(T length,char * str,int l)const{
+    inline void GeoHash(T length,char * str,int l)const{
       vec3<T> v;
       GeoHash(length,str,0,l,&v);
     }
