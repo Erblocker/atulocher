@@ -33,3 +33,5 @@
 
 /test/*.ann
 /test/*.sph
+/ncnn/build*
+/include/atulocher/ncnn

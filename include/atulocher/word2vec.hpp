@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include "cppjieba/Jieba.hpp"
+#include "language.hpp"
 namespace atulocher{
   class wlist{
     RWMutex locker;
@@ -70,7 +71,7 @@ namespace atulocher{
       return res;
     }
   };
-  class vord2vec:cppjieba::Jieba,wlist{
+  class vord2vec:cppjieba::Jieba,wlist,langsolv{
     //汉字转向量
     //使用前请自己准备cppjieba字典
     //还有足够的数据来训练思维球
@@ -111,8 +112,9 @@ namespace atulocher{
       const char * c,
       const char * d,
       const char * e,
-      const char * w
-    ):ks(path),Jieba(a,b,c,d,e),wlist(w){
+      const char * w,
+      const char * l
+    ):ks(path),Jieba(a,b,c,d,e),wlist(w),langsolv(l){
       
     }
     void learn(

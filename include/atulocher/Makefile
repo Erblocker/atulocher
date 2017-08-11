@@ -1,8 +1,7 @@
 all : atulocher
 	
 atulocher :NN.hpp.gch \
-           language.hpp.gch \
-           luapool.hpp.gch \
+           module.hpp.gch \
            word2vec.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread
 math.hpp.gch : math.hpp
@@ -21,5 +20,7 @@ ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch
 	g++ ksphere.hpp -std=c++0x
 luapool.hpp.gch : luapool.hpp
 	g++ luapool.hpp -std=c++0x
-word2vec.hpp.gch : word2vec.hpp ksphere.hpp.gch
+word2vec.hpp.gch : word2vec.hpp ksphere.hpp.gch language.hpp.gch 
 	g++ word2vec.hpp -std=c++0x
+module.hpp.gch : module.hpp luapool.hpp.gch
+	g++ module.hpp -std=c++0x

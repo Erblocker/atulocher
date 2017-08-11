@@ -1,5 +1,5 @@
-#ifndef yrssf_atulocher
-#define yrssf_atulocher
+#ifndef yrssf_atulocher_luapool
+#define yrssf_atulocher_luapool
 #include <mutex>
 #include <list>
 extern "C" {
