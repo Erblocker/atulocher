@@ -104,9 +104,9 @@ int main(int narg,const char * arg[]){
   if(mode=="compose"){
     if(narg>=5){
       if(narg>=6)
-        pre(net,arg[2],atoi(arg[4]),0);
-      else
         pre(net,arg[2],atoi(arg[4]),atoi(arg[5]));
+      else
+        pre(net,arg[2],atoi(arg[4]),0);
     }else
       pre(net,arg[2],400,0);
   }

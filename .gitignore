@@ -31,7 +31,7 @@
 *.out
 *.app
 
-/test/*.ann
-/test/*.sph
+*.ann
+*.sph
 /ncnn/build*
 /include/atulocher/ncnn
