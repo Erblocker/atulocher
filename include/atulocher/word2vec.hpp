@@ -5,7 +5,6 @@
 #include <vector>
 #include <map>
 #include "cppjieba/Jieba.hpp"
-#include "language.hpp"
 namespace atulocher{
   class wlist{
     RWMutex locker;
@@ -71,7 +70,7 @@ namespace atulocher{
       return res;
     }
   };
-  class vord2vec:cppjieba::Jieba,wlist,langsolv{
+  class vord2vec:cppjieba::Jieba,wlist{
     //汉字转向量
     //使用前请自己准备cppjieba字典
     //还有足够的数据来训练思维球
@@ -114,7 +113,7 @@ namespace atulocher{
       const char * e,
       const char * w,
       const char * l
-    ):ks(path),Jieba(a,b,c,d,e),wlist(w),langsolv(l){
+    ):ks(path),Jieba(a,b,c,d,e),wlist(w){
       
     }
     void learn(
@@ -144,16 +143,30 @@ namespace atulocher{
       auto p=ks.find(word.c_str());
       if(p)return p->obj.position;  //有现成的，直接返回
       std::vector<std::string> words;
-      this->Cut(word, words, true);
+      this->Cut(word, words, false);
       double exp;
       if(words.size()==0)
         return octree::vec(0,0,0);  //无法分词
       else
         exp=1.0d/(double)words.size();
+      class PP{
+        double step;
+        public:
+        double w;
+        PP(int l){
+          double s=(l*(s-1))/2.0d;
+          step=1.0d/s;
+          w=0;
+        }
+        void next(){
+          w+=step;//权重逐渐增大
+        }
+      }pp(words.size());
       ksphere::adder ar(&ks);
       ar.readonly=true;
       for(auto s:words){
-        if(ar.mean(s,exp)){
+        pp.next();
+        if(ar.mean(s,exp*pp.w)){
           //有，直接加入
         }else{
           //否则,尝试推测词语意思
@@ -176,32 +189,11 @@ namespace atulocher{
               if(kk)
                 S+=kk->obj.position*e;
             }
-            ar.mean(S,exp*wr);
+            ar.mean(S,exp*wr*pp.w);
           }
         }
       }
       return ar.position;
-    }
-    void sentenceToVecs(
-      std::string word,
-      std::list< std::pair<std::string,octree::vec> > & res
-    ){
-      typedef std::pair<std::string,octree::vec> wp;
-      std::vector<std::string> words;
-      CutAll(word, words);
-      for(auto it:words){
-        auto v=wordToVec(it);
-        octree::vec buf;
-        if(v==octree::vec(0,0,0)){//无法解析
-          if(numcheck(it,res)){   //尝试当作数字
-          }else{
-            memcpy(&buf,it.c_str(),sizeof(buf));//还是不能，强制转换
-            res.push_back(wp(it,octree::vec(buf)));
-          }
-        }else{
-          res.push_back(wp(it,v));
-        }
-      }
     }
   };
 }

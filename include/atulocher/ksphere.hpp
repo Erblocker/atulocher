@@ -350,6 +350,9 @@ namespace atulocher{
       );
       locker.unlock();
     }
+    static void vec2bin(const octree::vec & v,double * d,int l){
+      v.GeoHashBin(10000000,d,l);
+    }
   };
 }
 #endif

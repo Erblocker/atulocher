@@ -105,11 +105,145 @@ namespace atulocher{
         (z*p.z)
       );
     }
-    inline void GeoHash(T length,char * str,int l)const{
+    void GeoHash(T length,char * str,int l)const{
       vec3<T> v;
-      GeoHash(length,str,0,l,&v);
+      GeoHash(length,str,0,l,(&v));
     }
-    void GeoHash(T length,char str[],int begin,int end,vec3<T> *zero)const{
+    void GeoHashBin(T length,double * str,int l)const{
+      vec3<T> v;
+      GeoHashBin(length,str,0,l,(&v));
+    }
+#define __RET if(begin==end){return;}
+    void GeoHashBin(T length,double * str,int begin,int end,vec3<T> *zero)const{
+      __RET;
+      if(x>zero->x){
+        if(y>zero->y){
+          if(z>zero->z){
+            
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=1;
+            
+            zero->x+=length;
+            zero->y+=length;
+            zero->z+=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }else{
+            
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=0;
+            
+            zero->x+=length;
+            zero->y+=length;
+            zero->z-=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }
+        }else{
+          if(z>zero->z){
+            
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=1;
+            
+            zero->x+=length;
+            zero->y-=length;
+            zero->z+=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }else{
+            
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=0;
+            
+            zero->x+=length;
+            zero->y-=length;
+            zero->z-=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }
+        }
+      }else{
+        if(y>zero->y){
+          if(z>zero->z){
+            
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=1;
+            
+            zero->x-=length;
+            zero->y+=length;
+            zero->z+=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }else{
+            
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=1;
+            begin++;
+            __RET
+            str[begin]=0;
+            
+            zero->x-=length;
+            zero->y+=length;
+            zero->z-=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }
+        }else{
+          if(z>zero->z){
+            
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=1;
+            
+            zero->x-=length;
+            zero->y-=length;
+            zero->z+=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }else{
+            
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=0;
+            begin++;
+            __RET
+            str[begin]=0;
+            
+            zero->x-=length;
+            zero->y-=length;
+            zero->z-=length;
+            GeoHashBin(length*0.5f,str,begin+1,end,zero);
+          }
+        }
+      }
+    }
+#undef  __RET
+    void GeoHash(T length,char * str,int begin,int end,vec3<T> *zero)const{
       if(begin==end){
         str[begin]=0x00;
         return;
