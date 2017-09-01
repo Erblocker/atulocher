@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <string>
 #include <time.h>
+//#include <atulocher/threadpool.hpp>
 #include <atulocher/NN.hpp>
 using namespace atulocher::NN;
 void TestXor(){
@@ -95,9 +96,10 @@ void TestAdd(){
     printf("error = %d\n", error);
 }
 int main(int i,const char ** arg){
+  printf("\ntrain\n");
+    
   if(i==2){
     std::string s(arg[1]);
-    
     if(s=="add")
       TestAdd();
     else

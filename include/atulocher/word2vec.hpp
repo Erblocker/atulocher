@@ -70,7 +70,7 @@ namespace atulocher{
       return res;
     }
   };
-  class vord2vec:cppjieba::Jieba,wlist{
+  class word2vec:public cppjieba::Jieba,public wlist{
     //汉字转向量
     //使用前请自己准备cppjieba字典
     //还有足够的数据来训练思维球
@@ -104,7 +104,7 @@ namespace atulocher{
     }
     public:
     ksphere ks;
-    vord2vec(
+    word2vec(
       const char * path,
       const char * a,
       const char * b,
@@ -138,7 +138,7 @@ namespace atulocher{
       //例：setWeighter("否",-1.0d);
       wlist::set(s,w);
     }
-    octree::vec wordToVec(std::string &word){
+    octree::vec wordToVec(std::string word){
       if(word.empty())return octree::vec(0,0,0);
       auto p=ks.find(word.c_str());
       if(p)return p->obj.position;  //有现成的，直接返回
