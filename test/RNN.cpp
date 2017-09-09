@@ -50,5 +50,6 @@ int main(){
   int i;
   for(i=0;i<20000;i++)train(net);
   for(i=0;i<20;i++)test(net);
+  net.save("test.ann");
   return 0;
 }

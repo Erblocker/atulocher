@@ -64,11 +64,13 @@ void pre(RNN * net,const char * path,int length,int sleepTime){
   fclose(fp);
 }
 int main(int narg,const char * arg[]){
+  printf("atulocher::musicMaker\n");
   int layer[] = { 15,80,200,200,150 };
   RNN * net;
   string path;
   if(narg==3){
-    net=new RNN(0.25, 0.9, layer, 3);
+    //printf("create ANN file \n");
+    net=new RNN(0.25, 0.9, layer, 5);
     path="music.ann";
   }else
   if(narg>=4){
@@ -76,7 +78,6 @@ int main(int narg,const char * arg[]){
     path=arg[3];
   }else{
     printf(
-      "atulocher::musicMaker\n"
       "Usage: [mode] [music score file] [ANN file] (length) (speed)\n"
       "mode: \"train\" or \"compose\"\n"
       "music score file format:\n"
