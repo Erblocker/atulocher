@@ -12,7 +12,9 @@ NN_layer.hpp.gch : NN_layer.hpp threadpool.hpp.gch mempool.hpp.gch
 	g++ NN_layer.hpp -std=c++0x
 NN_MCPU.hpp.gch : NN_MCPU.hpp NN_layer.hpp.gch
 	g++ NN_MCPU.hpp -std=c++0x
-NN_GPU.hpp.gch : NN_GPU.hpp NN_layer.hpp.gch
+GPU.hpp.gch : GPU.hpp
+	g++ GPU.hpp -std=c++0x
+NN_GPU.hpp.gch : NN_GPU.hpp NN_layer.hpp.gch GPU.hpp.gch
 	g++ NN_GPU.hpp -std=c++0x
 NN.hpp.gch : NN.hpp NN_MCPU.hpp.gch
 	g++ NN.hpp -std=c++0x

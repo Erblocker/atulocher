@@ -155,6 +155,12 @@ class Layer{
   ~Layer(){
     this->destroy();
   }
+  virtual int getInputSize(){
+    return layer[0];
+  }
+  virtual int getOutputSize(){
+    return layer[szLayer-1];
+  }
   virtual void LoadInput(double input[]){
     for (int i = 0; i < layer[0]; ++i)
       output[0][i] = input[i];
