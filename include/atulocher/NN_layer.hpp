@@ -29,8 +29,12 @@ inline void MatXMat(double mat1[], double mat2[], double output[], int row, int 
         }
 }
 
+bool brand(){
+  return rand()>(RAND_MAX/2);
+}
+
 //随机生成－1.0～1.0之间的随机浮点数
-inline double lfrand(){
+double lfrand(){
      
     static int randbit = 0;
     if (!randbit){
@@ -70,6 +74,7 @@ class Layer{
     int szLayer;            //层数
     double eta;
     double momentum;
+    double makeDelta;       //人为误差，防止局部最优
     int *layer;             //每层的结点数
     ActionType actionType;  //激活函数类型
     Function act;           //激活函数
@@ -84,6 +89,7 @@ class Layer{
     void *   buffer;        //用于存储结点数、权值、前一时刻的权值、误差值、阈值、前一时刻的阈值、结点输出值的空间
   public:
   virtual void InitLayer(){
+    makeDelta=0;
     Layer *pLayer=this;
     switch (pLayer->actionType) {
         case SIGMOD:
@@ -142,7 +148,7 @@ class Layer{
     //加载大神经网络时会Segmentation fault，已经由前面的bzero取代
   }
   void freebuffer(){
-    free(buffer);
+    if(buffer)free(buffer);
   }
   virtual void destroy(){
     freebuffer();
@@ -190,8 +196,10 @@ class Layer{
     
     for (int i = lastIndex-1; i > 0; --i){
         MatXMat(weights[i], delta[i], delta[i - 1], layer[i], 1, layer[i + 1]);
-        for (int j = 0; j < layer[i]; ++j)
+        for (int j = 0; j < layer[i]; ++j){
             delta[i - 1][j] *= actdiff(output[i][j]);
+            delta[i - 1][j] +=makeDelta*lfrand()*(brand()?1:-1);
+        }
     }
     
     for (int i = 0; i < lastIndex; ++i){

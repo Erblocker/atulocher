@@ -1,5 +1,6 @@
 #ifndef atulocher_GPU
 #define atulocher_GPU
+#include <exception>
 #include <CL/cl.h>
 #include <iostream>
 #include <fstream>
@@ -10,7 +11,7 @@ namespace atulocher{
       cl_context context;
       cl_command_queue commandQueue;
       cl_device_id device;
-      virtual void CreateContext(){
+      virtual bool CreateContext(){
         cl_int errNum;
         cl_uint numPlatforms;
         cl_platform_id firstPlatformId;
@@ -19,7 +20,7 @@ namespace atulocher{
         if (errNum != CL_SUCCESS || numPlatforms <= 0){
           std::cerr << "Failed to find any OpenCL platforms." << std::endl;
           context=NULL;
-          return;
+          return false;
         }
         //创建一个OpenCL上下文环境
         cl_context_properties contextProperties[] ={
@@ -29,9 +30,10 @@ namespace atulocher{
         };
         this->context = clCreateContextFromType(contextProperties, CL_DEVICE_TYPE_GPU,
         NULL, NULL, &errNum);
+        return true;
       }
       //二、 创建设备并创建命令队列
-      virtual void CreateCommandQueue(){
+      virtual bool CreateCommandQueue(){
         cl_int errNum;
         cl_device_id *devices;
         size_t deviceBufferSize = -1;
@@ -39,7 +41,7 @@ namespace atulocher{
         errNum = clGetContextInfo(context, CL_CONTEXT_DEVICES, 0, NULL, &deviceBufferSize);
         if (deviceBufferSize <= 0){
           std::cerr << "No devices available.";
-          return;
+          return false;
         }
         // 为设备分配缓存空间
         devices = new cl_device_id[deviceBufferSize / sizeof(cl_device_id)];
@@ -48,6 +50,7 @@ namespace atulocher{
         commandQueue = clCreateCommandQueue(context, devices[0], 0, NULL);
         this->device = devices[0];
         delete[] devices;
+        return true;
       }
       virtual cl_program CreateProgram(const char* srcStr){
         cl_int errNum;

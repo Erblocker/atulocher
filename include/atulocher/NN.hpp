@@ -8,6 +8,16 @@
 #include "mempool.hpp"
 namespace atulocher{
 namespace NN{
+Layer* CreateLayer(double eta, double momentum, int layer[],int szLayer, ActionType actionType){
+    Layer* pLayer = new Layer_MCPU(eta,momentum,layer,szLayer,actionType);
+    return pLayer;
+}
+ 
+int DestroyLayer(Layer *pLayer){
+    if (!pLayer) return 0;
+    delete pLayer;
+    return 1;
+}
 int SaveLayer(Layer *pLayer,const char *filename){
     if(!pLayer) return 0;
     FILE *fp =0;
@@ -40,7 +50,6 @@ int SaveLayer(Layer *pLayer,const char *filename){
     }
     return 0;
 }
-Layer* CreateLayer(double eta, double momentum, int layer[],int szLayer, ActionType actionType);
 Layer* LoadLayer(const char *filename){
     if(!filename) return 0;
     FILE *fp = 0;
@@ -95,17 +104,6 @@ Layer* LoadLayer(const char *filename){
     return 0;
 }
  
-Layer* CreateLayer(double eta, double momentum, int layer[],int szLayer, ActionType actionType){
-    Layer* pLayer = new Layer_MCPU(eta,momentum,layer,szLayer,actionType);
-    return pLayer;
-}
- 
-int DestroyLayer(Layer *pLayer){
-    if (!pLayer) return 0;
-    delete pLayer;
-    return 1;
-}
- 
 void ToBinary(unsigned x, unsigned n,double output[]){
     for (unsigned i = 0, j = x; i < n; ++i, j >>= 1)
         output[i] = j & 1;
@@ -120,10 +118,19 @@ unsigned FromBinary(double output[],unsigned n){
 class NN{
     Layer *bp;
     public:
+    inline int getInputSize(){
+      return bp->getInputSize();
+    }
+    inline int getOutputSize(){
+      return bp->getOutputSize();
+    }
     NN(NN &)=delete;
     void operator=(NN &)=delete;
     NN(double eta, double momentum, int layer[],int szLayer,ActionType actionType=SIGMOD){
       bp=CreateLayer(eta,momentum,layer,szLayer,actionType);
+    }
+    NN(const char * path){
+      bp=LoadLayer(path);
     }
     ~NN(){
       DestroyLayer(bp);
@@ -146,6 +153,12 @@ class RNN{
   public:
   RNN(RNN &)=delete;
   void operator=(NN &)=delete;
+  inline int getInputSize(){
+    return bp->getInputSize()-layer[from];
+  }
+  inline int getOutputSize(){
+    return bp->getOutputSize();
+  }
   RNN(double eta, double momentum, int layer_i[],int szLayer,ActionType actionType=SIGMOD){
     this->layer=new int[szLayer];
     for(int i=0;i<szLayer;i++){
