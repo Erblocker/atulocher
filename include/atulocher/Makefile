@@ -2,7 +2,8 @@ all : atulocher
 	
 atulocher :NN.hpp.gch \
            module.hpp.gch \
-           language.hpp.gch
+           language.hpp.gch \
+           active.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread \
 	-I ../../leveldb/include \
 	../../leveldb/out-static/libleveldb.a
@@ -18,6 +19,10 @@ NN_GPU.hpp.gch : NN_GPU.hpp NN_layer.hpp.gch GPU.hpp.gch
 	g++ NN_GPU.hpp -std=c++0x
 NN.hpp.gch : NN.hpp NN_MCPU.hpp.gch
 	g++ NN.hpp -std=c++0x
+active.hpp.gch : active.hpp bayes.hpp.gch
+	g++ active.hpp -std=c++0x
+bayes.hpp.gch : bayes.hpp
+	g++ bayes.hpp -std=c++0x
 vec3.hpp.gch : vec3.hpp math.hpp.gch
 	g++ vec3.hpp -std=c++0x
 rand.hpp.gch : rand.hpp

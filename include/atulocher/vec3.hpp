@@ -1,6 +1,5 @@
 #ifndef atulocher_vec3
 #define atulocher_vec3
-#include "math.hpp"
 #include <math.h>
 namespace atulocher{
   template<typename T> class vec3{
@@ -72,6 +71,18 @@ namespace atulocher{
       b.z-=p.z;
       return b;
     }
+    vec3<T> & operator*=(T p){
+      x*=p;
+      y*=p;
+      z*=p;
+      return *this;
+    }
+    vec3<T> & operator/=(T p){
+      x/=p;
+      y/=p;
+      z/=p;
+      return *this;
+    }
     vec3<T> operator*(const T &p)const{
       return vec3<T>(p*x , p*y , p*z);
     }
@@ -89,17 +100,17 @@ namespace atulocher{
       return sqrt((x*x)+(y*y)+(z*z));
     }
     T invnorm()const{
-      return math::invsqrt((x*x)+(y*y)+(z*z));
+      return 1/sqrt((x*x)+(y*y)+(z*z));
     }
     T pro(const vec3<T> *p)const{
-      return math::sqrt(
+      return sqrt(
         (x*p->x)+
         (y*p->y)+
         (z*p->z)
       );
     }
     T pro(const vec3<T> &p)const{
-      return math::sqrt(
+      return sqrt(
         (x*p.x)+
         (y*p.y)+
         (z*p.z)

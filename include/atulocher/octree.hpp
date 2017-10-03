@@ -172,20 +172,15 @@ namespace octree{
       }
     }
     bool insert(octval * d,int maxdeep=64){
-      //printf("insert ");
       if(maxdeep<=0)return false;
       if(d==NULL)return false;
-      //printf("ins begin ");
       if(!isinbox(d->position))return false;
-      //printf("p1 ");
       int ar=divSpace(d->position);
       
       if(child[ar].mode==mode_Data){
-        //printf("p2 ");
         if(child[ar].val.data->position==d->position){
           return false;
         }
-        //printf("p3 ");
         auto buf=child[ar].val.data;
         child[ar].mode=mode_Empty;
         
@@ -196,11 +191,9 @@ namespace octree{
       
       }else //isnode
       if(child[ar].mode==mode_Node){
-        //printf("p4 ");
         return child[ar].val.node->insert(d);
       
       }else{//Empty
-        //printf("p5 ");
         child[ar].val.data=d;
         d->parent=this;
         d->area=ar;
@@ -234,45 +227,35 @@ namespace octree{
         tbeg.z+this->length
       );
       
-      //printf("length:%f\n",this->length);
       if(!AABB(tbeg,tend,beg,end))return;
-      //printf("collide\n");
       for(int i=0;i<8;i++){
         double len=this->length/2.0d;
         
         tbeg=area2vec(i)*len+this->orign;
-        //printf("block:(%f,%f,%f)",tbeg.x,tbeg.y,tbeg.z);
         tend(
           tbeg.x+len,
           tbeg.y+len,
           tbeg.z+len
         );
-        //printf("(%f,%f,%f)\n",tend.x,tend.y,tend.z);
         if(AABB(tbeg,tend,beg,end)){
-          //printf("AABB collide\n");
           if(child[i].mode==mode_Node){
-            //printf("is node\n");
             child[i].val.node->find(callback,beg,end,arg);
           }else
           if(child[i].mode==mode_Data){
             auto buf=child[i].val.data;
-            //printf("find a object\n");
             if(isinbox(tbeg,buf->position,len)){
-              //printf("callback\n");
               callback(buf,arg);
             }
           }else{
-            //printf("empty\n");
+            
           }
         }else{
-          //printf("AABB no collide\n");
           continue;
         }
       }
     }
   };
   Octreepool::Octreepool(){
-        //printf("p2\n");
         freed=NULL;
         used=0;
         malloced=0;
@@ -280,7 +263,6 @@ namespace octree{
   Octreepool::~Octreepool(){
         octreeNode  * it1;
         octreeNode  * it=freed;
-        //printf("used:%d malloced:%d",used,malloced);
         while(it){
           it1=it;
           it=it->gc_next;
@@ -318,7 +300,6 @@ namespace octree{
     public:
     octreeNode  * tree;
     octree(vec ori,double len){
-      //printf("p1\n");
       tree=gc.get();
       tree->orign=ori;
       tree->length=len;

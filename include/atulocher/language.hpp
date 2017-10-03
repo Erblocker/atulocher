@@ -81,6 +81,9 @@ namespace atulocher{
     virtual vec getVector(const std::string & wd){
       return (this->wordToVec(wd)/10000000.0d);
     }
+    static inline vec getVector(const vec & in){
+      return (in/10000000.0d);
+    }
     static inline int maxi(double * in){
       double v=in[0];
       int i=0;
@@ -91,6 +94,16 @@ namespace atulocher{
         }
       }
       return i;
+    }
+    virtual void getKeyword(std::string word,std::list<vec> & kw){
+      if(word.empty())return;
+      locker.lock();
+      std::vector<cppjieba::KeywordExtractor::Word>           keywordres;
+      this->extractor.Extract(word,keywordres,5);
+      for(auto it:keywordres){
+        kw.push_back(this->getVector(it.word)*it.weight);
+      }
+      locker.unlock();
     }
     virtual void solve(std::string word,std::list<sentence> & sen){
       if(word.empty())return;

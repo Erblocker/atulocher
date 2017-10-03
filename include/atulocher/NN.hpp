@@ -21,7 +21,7 @@ int DestroyLayer(Layer *pLayer){
 int SaveLayer(Layer *pLayer,const char *filename){
     if(!pLayer) return 0;
     FILE *fp =0;
-    if((fp = fopen(filename, "wb+"))){
+    if((fp = fopen(filename, "w"))){
         fprintf(fp,"atulocher ann std\n");
         fprintf(fp,"%d %lf %lf %d\n",
           pLayer->szLayer,
