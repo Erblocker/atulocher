@@ -157,9 +157,34 @@ namespace atulocher{
         net->train(input,output,i==0);
         i++;
       }
-      
       locker.unlock();
     }
+    virtual void train(const std::list<sentence> & sen){
+      if(sen.size()==0)return;
+      locker.lock();
+      int i=0,m;
+      double input[3],output[6];
+      for(auto w:sen){
+        m=w.mode;
+        for(int j=0;j<6;j++){
+          output[j]=0;
+        }
+        if(m>5 || m<0){
+        
+        }else{
+          output[m]=1;
+        }
+        
+        vec v=getVector(w.word);
+        input[0]=v.x;
+        input[1]=v.y;
+        input[2]=v.z;
+        
+        net->train(input,output,i==0);
+        i++;
+      }
+      locker.unlock();
+    } 
   };
 }
 #endif

@@ -103,7 +103,6 @@ Layer* LoadLayer(const char *filename){
     fclose(fp);
     return 0;
 }
- 
 void ToBinary(unsigned x, unsigned n,double output[]){
     for (unsigned i = 0, j = x; i < n; ++i, j >>= 1)
         output[i] = j & 1;

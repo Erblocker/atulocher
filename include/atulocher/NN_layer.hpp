@@ -28,7 +28,6 @@ inline void MatXMat(double mat1[], double mat2[], double output[], int row, int 
                 output[pos] += mat1[lcolrrow * i + k] * mat2[column * k + j];
         }
 }
-
 bool brand(){
   return rand()>(RAND_MAX/2);
 }
