@@ -9,6 +9,8 @@ atulocher :NN.hpp.gch \
 	../../leveldb/out-static/libleveldb.a
 math.hpp.gch : math.hpp
 	g++ math.hpp -std=c++0x
+kmeans.hpp.gch : kmeans.hpp
+	g++ kmeans.hpp -std=c++0x
 NN_layer.hpp.gch : NN_layer.hpp threadpool.hpp.gch mempool.hpp.gch
 	g++ NN_layer.hpp -std=c++0x
 NN_MCPU.hpp.gch : NN_MCPU.hpp NN_layer.hpp.gch
@@ -33,7 +35,7 @@ language.hpp.gch : language.hpp word2vec.hpp.gch db.hpp.gch
 	g++ language.hpp -std=c++0x -I ../../leveldb/include
 db.hpp.gch : db.hpp
 	g++ db.hpp -std=c++0x -I ../../leveldb/include
-ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch
+ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch
 	g++ ksphere.hpp -std=c++0x -I ../../leveldb/include
 luapool.hpp.gch : luapool.hpp
 	g++ luapool.hpp -std=c++0x

@@ -218,6 +218,10 @@ namespace octree{
       if(aend.z < bbeg.z || abeg.z > bend.z)return false;
       return true;
     }
+    void erase(octval * o){
+      if(o->parent==NULL)return;
+      o->parent->remove(o->area);
+    }
     void find(void(*callback)(octval*,void*),const vec & beg,const vec & end,void * arg)const{
       vec tbeg=this->orign;
       vec tend;
