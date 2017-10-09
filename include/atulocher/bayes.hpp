@@ -14,7 +14,7 @@ namespace atulocher{
   namespace bayes{
     using namespace std;
     class FloatError:public std::exception{};
-    class naive{ //暴力膜蛤不可取！！！
+    class naive{
       int s;//样品总数
       struct elm{
           int n;//出现次数

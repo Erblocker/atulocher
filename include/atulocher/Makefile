@@ -31,8 +31,10 @@ rand.hpp.gch : rand.hpp
 	g++ rand.hpp -std=c++0x
 octree.hpp.gch : octree.hpp vec3.hpp.gch
 	g++ octree.hpp -std=c++0x
-language.hpp.gch : language.hpp word2vec.hpp.gch db.hpp.gch
-	g++ language.hpp -std=c++0x -I ../../leveldb/include
+language.hpp.gch : language.hpp word2vec.hpp.gch sentree.hpp.gch
+	g++ language.hpp -std=c++0x -I ../../crfpp
+sentree.hpp.gch : sentree.hpp
+	g++ sentree.hpp -std=c++0x
 db.hpp.gch : db.hpp
 	g++ db.hpp -std=c++0x -I ../../leveldb/include
 ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch

@@ -6,6 +6,7 @@
 #include <map>
 #include "cppjieba/Jieba.hpp"
 namespace atulocher{
+  typedef octree::vec vec;
   class wlist{
     RWMutex locker;
     std::map<std::string,double> lst;
@@ -111,10 +112,30 @@ namespace atulocher{
       const char * c,
       const char * d,
       const char * e,
-      const char * w,
-      const char * l
+      const char * w
     ):ks(path),Jieba(a,b,c,d,e),wlist(w){
       
+    }
+    static size_t utf8_to_charset(const std::string &input,std::vector<std::string> &output){
+      std::string ch; 
+      for (size_t i = 0, len = 0; i != input.length(); i += len) {
+        unsigned char byte = (unsigned)input[i];
+        if (byte >= 0xFC) // lenght 6
+          len = 6;  
+        else if (byte >= 0xF8)
+          len = 5;
+        else if (byte >= 0xF0)
+         len = 4;
+        else if (byte >= 0xE0)
+         len = 3;
+        else if (byte >= 0xC0)
+         len = 2;
+        else
+         len = 1;
+        ch = input.substr(i, len);
+        output.push_back(ch);
+      }
+      return output.size();
     }
     void learn(
       std::string & word,
@@ -131,6 +152,10 @@ namespace atulocher{
       char sbuf[3500];
       memcpy(sbuf,v.c_str(),3500);
       ar.add(word,sbuf);
+    }
+    void getsimiler(std::string s,std::list<std::string> &words){
+      auto p=wordToVec(s);
+      
     }
     inline void setWeighter(std::string s,double w){
       //定义词语权重设置器
@@ -171,7 +196,7 @@ namespace atulocher{
         }else{
           //否则,尝试推测词语意思
           std::vector<std::string> se;
-          CutForSearch(s,se);
+          utf8_to_charset(s,se);
           double e;
           if(se.size()==0)
             continue;
