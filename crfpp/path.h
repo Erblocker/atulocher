@@ -8,7 +8,6 @@
 #ifndef CRFPP_PATH_H_
 #define CRFPP_PATH_H_
 
-#include <stdio.h>
 #include <vector>
 #include "node.h"
 

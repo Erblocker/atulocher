@@ -33,5 +33,4 @@
 
 *.ann
 *.sph
-/ncnn/build*
-/include/atulocher/ncnn
+
