@@ -10,7 +10,7 @@
 #include "sentree.hpp"
 #include <crfpp.h>
 namespace atulocher{
-  class lang:public sentree_base{
+  class lang{
     
   };
 }

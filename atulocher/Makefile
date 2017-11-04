@@ -5,8 +5,8 @@ atulocher :NN.hpp.gch \
            language.hpp.gch \
            active.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread \
-	-I ../../leveldb/include \
-	../../leveldb/out-static/libleveldb.a
+	-I ../leveldb/include \
+	../leveldb/out-static/libleveldb.a
 math.hpp.gch : math.hpp
 	g++ math.hpp -std=c++0x
 kmeans.hpp.gch : kmeans.hpp
@@ -32,13 +32,13 @@ rand.hpp.gch : rand.hpp
 octree.hpp.gch : octree.hpp vec3.hpp.gch
 	g++ octree.hpp -std=c++0x
 language.hpp.gch : language.hpp word2vec.hpp.gch sentree.hpp.gch
-	g++ language.hpp -std=c++0x -I ../../crfpp
+	g++ language.hpp -std=c++0x -I ../crfpp
 sentree.hpp.gch : sentree.hpp
 	g++ sentree.hpp -std=c++0x
 db.hpp.gch : db.hpp
-	g++ db.hpp -std=c++0x -I ../../leveldb/include
+	g++ db.hpp -std=c++0x -I ../leveldb/include
 ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch
-	g++ ksphere.hpp -std=c++0x -I ../../leveldb/include
+	g++ ksphere.hpp -std=c++0x -I ../leveldb/include
 luapool.hpp.gch : luapool.hpp
 	g++ luapool.hpp -std=c++0x
 word2vec.hpp.gch : word2vec.hpp ksphere.hpp.gch
