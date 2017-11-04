@@ -7,6 +7,8 @@
 #include <exception>
 #include <sstream>
 #include <iostream>
+#include <crfpp.h>
+#include <memory.h>
 #include "mempool.hpp"
 namespace atulocher{
   using namespace std;
@@ -185,10 +187,21 @@ namespace atulocher{
         if(parent)return parent->index;
         return -1;
       }
-      void toString(string & str)const{
-        
+      char * toString(char * str,int len)const{
+        snprintf(str,len,"%d %s %s %s %d_%s",
+          this->index,
+          this->value.c_str(),
+          this->wordTag.c_str(),
+          this->wordTagFull.c_str(),
+          this->getOffset(),
+          this->senTag.c_str()
+        );
+        return str;
       }
-      
+      const char * emptyLine(){
+        const static char * el="_ _ _ _ _";
+        return el;
+      }
       public:
       List * a(Area ar){
         if(ar==LEFT)
@@ -388,34 +401,88 @@ namespace atulocher{
           }
         }
       }
+      static char * cutByFirst_(char * str){
+        auto p=str;
+        while(*p){
+          if(*p=='_'){
+            *p='\0';
+            return p+1;
+          }
+          p++;
+        }
+        return p;
+      }
+      void loadSenString(const char * str){
+        char buf[512];
+        snprintf(buf,512,"%s",str);
+        char * tag=cutByFirst_(buf);
+        this->offset=atoi(buf);
+        this->senTag=tag;
+      }
+      char * getSenString(char * str,int len){
+        snprintf(str,len,"%s %s %s",
+          value.c_str(),
+          wordTag.c_str(),
+          wordTagFull.c_str()
+        );
+        return str;
+      }
+      void loadTagString(const char * str){
+        char buf[512];
+        snprintf(buf,512,"%s",str);
+        char * full=cutByFirst_(buf);
+        this->wordTag=buf;
+        this->wordTagFull=full;
+      }
+      char * getTagString(char * str,int len)const{
+        snprintf(str,len,"%s %s_%s",
+          value.c_str(),
+          wordTag.c_str(),
+          wordTagFull.c_str()
+        );
+        return str;
+      }
       void paserOffsetAll(){
         left.paserOffsetAll();
         right.paserOffsetAll();
       }
-      void paserAbsposi(){
-        if(absposi==-1)return;
+      private:
+      bool paserAbsposiLeft(){
         int i=1;
-        auto p=next;
-        while(p){
-          if(p->index==absposi){
-            p->folder(i,LEFT,false);
-            return;
-          }
-          p=p->next;
-          i++;
-        }
-        
-        i=1;
-        p=last;
+        node * p=last;
         while(p){
           if(p->index==absposi){
             p->folder(i,RIGHT,false);
-            return;
+            return true;
           }
           p=p->last;
           i++;
         }
-        absposi=-1;
+        return false;
+      }
+      bool paserAbsposiRight(){
+        int i=1;
+        node * p=next;
+        while(p){
+          if(p->index==absposi){
+            p->folder(i,LEFT,false);
+            return true;
+          }
+          p=p->next;
+          i++;
+        }
+        return false;
+      }
+      public:
+      void paserAbsposi(){
+        if(absposi<=0)return;
+        
+        if(absposi>index){
+          if(!paserAbsposiRight())paserAbsposiLeft();
+        }else{
+          if(!paserAbsposiLeft() )paserAbsposiRight();
+        }
+        absposi=0;
       }
     };
     
@@ -430,7 +497,7 @@ namespace atulocher{
     node::GC npool;
     int index;
     
-    protected:
+    public:
     inline void bind(mempool<node>* p){
       npool.bind(p);
     }
@@ -438,14 +505,26 @@ namespace atulocher{
     public:
     node * root;
     list<node*> allnode;
-    sentree(){
+    virtual void init(){
       root=newNode();
       root->value="root";
       index=1;
-      allnode.push_back(root);
+      //allnode.push_back(root);
+    }
+    virtual void clear(){
+      allnode.clear();
+      npool.clear();
+      this->init();
+    }
+    sentree(){
+      this->init();
     }
     ~sentree(){
       
+    }
+    virtual void add(node * p){
+      root->right.pushEnd(p);
+      allnode.push_back(p);
     }
     virtual void add(
       string v,
@@ -507,6 +586,70 @@ namespace atulocher{
       for(auto p:allnode){
         p->paserAbsposi();
       }
+    }
+    virtual void buildTag(const list<string> & words,CRFPP::Tagger *tagger){
+      tagger->clear();
+      for(auto wd:words)tagger->add(wd.c_str());
+      if (! tagger->parse()) return;
+      for (size_t i = 0; i < tagger->size(); ++i) {
+        auto p=this->newNode();
+        p->value=tagger->x(i, 0);
+        p->loadTagString(tagger->y2(i));
+        this->add(p);
+      }
+    }
+    virtual void buildTree(CRFPP::Tagger *tagger){
+      tagger->clear();
+      char buf[512];
+      for(auto p:allnode){
+        tagger->add(p->getSenString(buf,512));
+      }
+      if (! tagger->parse()) return;
+      auto it=allnode.begin();
+      for (size_t i = 0; i < tagger->size(); ++i) {
+        if(it==allnode.end())break;
+        (*it)->loadSenString(tagger->y2(i));
+        it++;
+      }
+      this->paserOffset();
+    }
+    virtual bool convertConllFile(const char * path,
+      void(*cb1)(const char*,void*),
+      void(*cb2)(const char*,void*),
+      void * arg
+    ){
+      this->clear();
+      FILE * fp=fopen(path,"r");
+      char buf[512];
+      if(!fp)return false;
+      struct self_o{
+        void(*cb1)(const char*,void*);
+        void(*cb2)(const char*,void*);
+        void * arg;
+      }self;
+      self.cb1=cb1;
+      self.cb2=cb2;
+      self.arg=arg;
+      while(!feof(fp)){
+        bzero(buf,512);
+        fgets(buf,512,fp);
+        if(buf[0]==' ')break;
+        this->loadConllLine(buf);
+        this->foreach([](const node * p,void * s){
+          if(p->index==0)return;
+          char buf[256];
+          auto self=(self_o*)s;
+          if(self->cb1)
+            self->cb1(p->toString(buf,256),self->arg);
+          if(self->cb2)
+            self->cb2(p->getTagString(buf,256),self->arg);
+        },&self);
+        
+        if(cb1)cb1("_ _ _ _ _",arg);
+        if(cb2)cb2("_ _",arg);
+      }
+      fclose(fp);
+      return true;
     }
   };
 }

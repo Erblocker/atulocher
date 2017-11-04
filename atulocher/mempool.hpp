@@ -1,16 +1,29 @@
 #ifndef atulocher_mempool
 #define atulocher_mempool
 #include <mutex>
+#include <atomic>
 namespace atulocher{
     template<typename T>
-    class mempool{
+    class mempool_block{
       T * freed;
       std::mutex locker;
+      std::atomic<int> rnum;//引用计数器
       public:
-      mempool(){
-        freed=NULL;
+      void pickup(){
+        rnum++;
       }
-      ~mempool(){
+      void giveup(){
+        rnum--;
+        if(rnum==0){
+          delete this;
+          return;
+        }
+      }
+      mempool_block(){
+        freed=NULL;
+        rnum=1;
+      }
+      ~mempool_block(){
         T * it1;
         T * it=freed;
         while(it){
@@ -36,6 +49,28 @@ namespace atulocher{
         f->next=freed;
         freed=f;
         locker.unlock();
+      }
+    };
+    template<typename T>
+    class mempool{
+      protected:
+      mempool_block<T> * parpool;
+      public:
+      mempool(){
+        parpool=new mempool_block<T>;
+      }
+      mempool(const mempool<T> & pp){
+        parpool=pp.parpool;
+        parpool->pickup();
+      }
+      ~mempool(){
+        parpool->giveup();
+      }
+      T * get(){
+        return parpool->get();
+      }
+      void del(T * f){
+        parpool->del(f);
       }
     };
     template<typename T>
@@ -66,6 +101,9 @@ namespace atulocher{
         mnum=0;
       }
       ~mempool_auto(){
+        this->clear();
+      }
+      void clear(){
         T * it1;
         T * it=used;
         int n=0;
@@ -75,7 +113,7 @@ namespace atulocher{
           odel(it1);
           n++;
         }
-        printf("use:%d\tdel:%d\n",mnum,n);
+        //printf("use:%d\tdel:%d\n",mnum,n);
       }
       T * get(){
         locker.lock();

@@ -34,7 +34,7 @@ octree.hpp.gch : octree.hpp vec3.hpp.gch
 language.hpp.gch : language.hpp word2vec.hpp.gch sentree.hpp.gch
 	g++ language.hpp -std=c++0x -I ../crfpp
 sentree.hpp.gch : sentree.hpp
-	g++ sentree.hpp -std=c++0x
+	g++ sentree.hpp -std=c++0x -I ../ -I ../crfpp
 db.hpp.gch : db.hpp
 	g++ db.hpp -std=c++0x -I ../leveldb/include
 ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch
