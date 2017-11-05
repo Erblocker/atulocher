@@ -314,19 +314,17 @@ namespace atulocher{
         lua_close(L);
       }
       static inline int isptr(lua_State * L,int p){
-        return (lua_isuserdata(L,p));
+        return (lua_islightuserdata(L,p));
       }
       static inline void * toptr(lua_State * L,int p){
-        if(lua_isuserdata(L,p)){
-          auto pt=(void **)lua_touserdata(L,p);
-          return *pt;
+        if(lua_islightuserdata(L,p)){
+          return lua_touserdata(L,p);
         }else{
           return NULL;
         }
       }
       static inline void pushptr(lua_State * L,void * ptr){
-        auto pt=(void **)lua_newuserdata(L,sizeof(void*));
-        *pt=ptr;
+        lua_pushlightuserdata(L,ptr);
       }
       
       #define GETSELF \
@@ -383,6 +381,16 @@ namespace atulocher{
         self->callactivity(lua_tostring(L,2));
         return 0;
       }
+      static int lua_addactivity(lua_State * L){
+        GETSELF;
+        if(!lua_isstring(L,2))return 0;
+        if(!lua_isstring(L,3))return 0;
+        self->addActivity(
+          lua_tostring(L,2),
+          lua_tostring(L,3)
+        );
+        return 0;
+      }
       static int lua_addknown(lua_State * L){
         GETSELF;
         if(!lua_isstring(L,2))return 0;
@@ -412,6 +420,7 @@ namespace atulocher{
       void luaopen(){
         static luaL_Reg reg[]={
           {"addknown",lua_addknown},
+          {"addactivity",lua_addactivity},
           {"getknown",lua_getknown},
           {"getenv",  lua_getenv},
           {"callactivity",lua_callactivity},
@@ -430,8 +439,7 @@ namespace atulocher{
         lua_getglobal(lt,"main");
         if(!lua_isfunction(lt,-1))return;
         
-        auto pt=(void **)lua_newuserdata(lt,sizeof(void*));
-        *pt=this;
+        pushptr(lt,this);
         
         if(lua_pcall(lt,1,1,0)!=0){
           
@@ -440,6 +448,13 @@ namespace atulocher{
             if(lua_tointeger(lt,-1)==0)
               lastDepth=nowDepth;
         lua_pop(lt,1);
+      }
+      virtual void addActivity(string actname,string scriptpath){
+        string k="lua_activity_";
+        k+=actname;
+        db->Put(
+          leveldb::WriteOptions(),k,scriptpath
+        );
       }
       virtual void doActivity(const string & actname){
         string k="lua_activity_";
