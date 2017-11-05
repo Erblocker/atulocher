@@ -326,24 +326,8 @@ namespace atulocher{
       else
         return it->second;
     }
-    void find(void(*callback)(knowledge*,void*),octree::vec & p,double len,void * arg){
-      locker.Rlock();
-      struct of_t{
-        void(*callback)(knowledge*,void*);
-        void * arg;
-      }ot;
-      ot.callback=callback;
-      ot.arg=arg;
-      oct.find([](octree::object * obj,void * arg){
-          auto self=(of_t*)arg;
-          auto kn=(knowledge*)obj->value;
-          self->callback(kn,self->arg);
-        },
-        p-octree::vec(len,len,len),
-        p+octree::vec(len,len,len),
-        &ot
-      );
-      locker.unlock();
+    inline void find(void(*callback)(knowledge*,void*),octree::vec & p,double len,void * arg){
+      this->getnear(p,callback,len,arg);
     }
     static void vec2bin(const octree::vec & v,double * d,int l){
       v.GeoHashBin(10000000,d,l);

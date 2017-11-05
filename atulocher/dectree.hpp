@@ -61,7 +61,7 @@ namespace atulocher{
         return times==p.times;
       }
     };
-    class info:public probinfo{
+    class info{
       public:
       info * next,
            * gc_next;
@@ -94,9 +94,22 @@ namespace atulocher{
                  itTimes;     //迭代次数
       bool       succeed;
       virtual void findEvent(const keyname &kl)=0;
-      virtual void print(void(*callback)(const char*,void*),void * arg)=0;
       virtual void doActivity(const string & actname)=0;
-      
+      virtual void print(list<string> & res,info * t,int maxsearchdeep=32){
+        if(maxsearchdeep<0)return;
+        res.push_front(t->answer);
+        for(auto it:t->depend)
+          this->print(res,it,maxsearchdeep-1);
+      }
+      virtual void print(list<string> & res){
+        for(auto it:target){
+          auto p=known.find(it);
+          if(p!=known.end()){
+            this->print(res,p->second);
+          }
+        }
+        
+      }
       virtual void learnOne(const keyname &kl){
         string k;
         getKey(kl,k);
@@ -143,6 +156,8 @@ namespace atulocher{
         p->name=name;
         p->answer=answer;
         p->res =res;
+        p->depend.clear();
+        if(!depend.empty())
         for(auto it:depend){
           auto d=known.find(it);
           if(d!=known.end()){
@@ -354,7 +369,7 @@ namespace atulocher{
         lua_settable(L,-3);
         
         lua_pushstring(L,"depend");
-        lua_createtable(L,pinfo->depend.size(),0);//create new array
+        lua_createtable(L,pinfo->depend.size()+1,0);
         lua_pushnil(L);
         lua_rawseti(L,-2,0);  //fill array[i][0]
         int i=1;
@@ -378,7 +393,8 @@ namespace atulocher{
       static int lua_callactivity(lua_State * L){
         GETSELF;
         if(!lua_isstring(L,2))return 0;
-        self->callactivity(lua_tostring(L,2));
+        string p=lua_tostring(L,2);
+        self->doActivity(p);
         return 0;
       }
       static int lua_addactivity(lua_State * L){
@@ -431,12 +447,16 @@ namespace atulocher{
         luaL_setfuncs(L, reg, 0);
         lua_setglobal(L,"ST");
       }
-      virtual void callactivity(const char * name){
+      void callactivity(const char * name){
         auto lt=lua_newthread(L);
         
-        luaL_loadfile(lt,name);
+        if(name){
+          luaL_loadfile(lt,name);
+          lua_getglobal(lt,"main");
+        }else{
+          lua_getglobal(lt,"onMissActivity");
+        }
         
-        lua_getglobal(lt,"main");
         if(!lua_isfunction(lt,-1))return;
         
         pushptr(lt,this);
@@ -459,6 +479,7 @@ namespace atulocher{
       virtual void doActivity(const string & actname){
         string k="lua_activity_";
         k+=actname;
+        env["ACT_NAME"]=actname;
         string v;
         if(
           !db->Get(
@@ -466,9 +487,18 @@ namespace atulocher{
             k,
             &v
           ).ok()
-        )return;
-        if(v.empty())return;
-        callactivity(v.c_str());
+        ){
+          env["SCRIPT_NAME"]="";
+          callactivity(NULL);
+          return;
+        }
+        if(v.empty()){
+          env["SCRIPT_NAME"]="";
+          callactivity(NULL);
+        }else{
+          env["SCRIPT_NAME"]=v;
+          callactivity(v.c_str());
+        }
       }
       virtual void findEvent(const keyname & kl){
         auto lt=lua_newthread(L);
@@ -497,6 +527,14 @@ namespace atulocher{
         lua_pcall(lt,1,0,0);
       }
       #undef GETSELF
+    };
+    class forget{
+      public:
+      char * corebuffer;  //核心缓冲区
+                          //查找数据优先在这里查，找不到才到数据库
+    };
+    class dectree:public activity,public forget{
+      
     };
   }
 }
