@@ -11,8 +11,14 @@ int main(){
   ksphere::adder ar(&kn);
   ar.mean(a,0.5d);
   ar.add(std::string("test"),std::string("t"));
+  
   auto posi=ar.position;
   printf("position:(%lf,%lf,%lf)\n",posi.x,posi.y,posi.z);
+  
+  kn.getnear(ar.position,[](ksphere::knowledge*p,void*){
+    auto posi=p->obj.position;
+    printf("position:(%lf,%lf,%lf)\n",posi.x,posi.y,posi.z);
+  },1000,NULL);
   
   double bin[16];
   ksphere::vec2bin(posi,bin,16);

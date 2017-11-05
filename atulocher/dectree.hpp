@@ -11,7 +11,7 @@
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
 #include <unistd.h>
-#include <lua.hpp>
+#include "utils.hpp"
 #include "mempool.hpp"
 namespace atulocher{
   namespace dectree{
@@ -71,6 +71,12 @@ namespace atulocher{
       string res;
     };
     typedef mempool_auto<info> GC;
+    struct keyname{
+      string keyword;
+      string parname;
+      string actname;
+      string targ;
+    };
     class base{
       public:
       GC                gc;
@@ -84,13 +90,14 @@ namespace atulocher{
                  lastDepth,   //上次获得结果的深度
                  testTimes,   //尝试次数
                  testDepth,   //尝试层数
+                 searchTimes, //搜索次数
                  itTimes;     //迭代次数
       bool       succeed;
-      virtual void findEvent(const list<string> &kl)=0;
+      virtual void findEvent(const keyname &kl)=0;
       virtual void print(void(*callback)(const char*,void*),void * arg)=0;
       virtual void doActivity(const string & actname)=0;
       
-      virtual void learnOne(const list<string> &kl){
+      virtual void learnOne(const keyname &kl){
         string k;
         getKey(kl,k);
         if(!logEvent(k))findEvent(kl);
@@ -100,26 +107,29 @@ namespace atulocher{
         for(auto here=path.begin();here!=path.end();here++){
           for(auto it:known){
             for(auto targ:target){
-              list<string> kl;
-              kl.push_back(it.first);
-              kl.push_back(targ);
+              keyname kl;
+              kl.keyword=it.first;
+              kl.targ   =targ;
               if(last!=path.end())
-                kl.push_back(*last);
+                kl.parname=*last;
               else
-                kl.push_back(" ");
-              kl.push_back(*here);
+                kl.parname=" ";
+              kl.actname=*here;
               learnOne(kl);
             }
           }
           last=here;
         }
       }
-      virtual void getKey(const list<string> &dep,string & name){
+      virtual void getKey(const keyname &dep,string & name){
         name="dectree_prob_";
-        for(auto s:dep){
-          name+=treename+"_";
-          name+=s;
-        }
+        name+=treename;
+        const static string sp="_";
+        
+        if(!dep.keyword.empty())name+=sp+dep.keyword;
+        if(!dep.targ.empty())   name+=sp+dep.targ;
+        if(!dep.parname.empty())name+=sp+dep.parname;
+        if(!dep.actname.empty())name+=sp+dep.actname;
       }
       virtual info * getknown(string name){
         auto d=known.find(name);
@@ -173,10 +183,12 @@ namespace atulocher{
         const string & actname,
         const string & targ
       ){
-        list<string> nl;
-        nl.push_back(keyword);
-        nl.push_back(targ);
-        nl.push_back(parname);
+        keyname nl;
+        nl.keyword=keyword;
+        nl.targ=targ;
+        nl.parname=parname;
+        nl.actname="";
+        
         string k;
         getKey(nl,k);
         char tm[32];
@@ -184,7 +196,7 @@ namespace atulocher{
         db->Put(
           leveldb::WriteOptions(),k,tm
         );
-        nl.push_back(actname);
+        nl.actname=actname;
         getKey(nl,k);
         db->Put(
           leveldb::WriteOptions(),k,string("1 ")+actname
@@ -197,15 +209,13 @@ namespace atulocher{
         succeed=true;
         return true;
       }
-      virtual void search(const list<string> & dep,map<string,int> & acts){
-        string k;
-        getKey(dep,k);
-        auto ks=k.c_str();
+      inline void getRememberFromDB(const char * ks,set<probinfo> & pis,int num){
         leveldb::ReadOptions options;
         //options.snapshot = db->GetSnapshot();
         leveldb::Iterator* it = db->NewIterator(options);
-        set<probinfo> pis;
+        int i=0;
         for(it->Seek(ks);(it->Valid() && prefix_match(ks,it->key().data()));it->Next()){
+          if(i>num)break;
           probinfo p;
           p.key=it->key().data();
           istringstream iss(it->value().data());
@@ -213,7 +223,20 @@ namespace atulocher{
           iss>>p.actname;
           if(p.actname.empty())continue;
           pis.insert(p);
+          i++;
         }
+        delete it;
+      }
+      virtual void getRemember(const char * ks,set<probinfo> & pis){
+        getRememberFromDB(ks,pis,searchTimes);
+      }
+      virtual void search(const keyname & dep,map<string,int> & acts){
+        string k;
+        getKey(dep,k);
+        
+        set<probinfo> pis;
+        getRemember(k.c_str(),pis);
+        
         int i=0;
         for(auto pi:pis){
           if(succeed)break;
@@ -247,20 +270,22 @@ namespace atulocher{
         set<probinfo>   actl;
         for(auto it:known){
           for(auto targ:target){
-            list<string> kl;
-            kl.push_back(it.first);
-            kl.push_back(targ);
-            kl.push_back(actname);
+            keyname kl;
+            kl.keyword=it.first;
+            kl.targ   =targ;
+            kl.parname=actname;
+            kl.actname="";
             search(kl,acts);
           }
         }
+        //直接用二分排序
         for(auto it:acts){
           probinfo p;
           p.actname=it.first;
           p.times=it.second;
           actl.insert(p);
         }
-        acts.clear();
+        acts.clear();//清空map，不然数据重复了，浪费
         int i=0;
         for(auto it:actl){
           check();
@@ -280,9 +305,10 @@ namespace atulocher{
       public:
       map<string,string> env;
       lua_State * L;
-      activity(){
+      activity(const char * initpath){
         L=luaL_newstate();
         this->luaopen();
+        luaL_dofile(L,initpath);
       }
       ~activity(){
         lua_close(L);
@@ -391,7 +417,7 @@ namespace atulocher{
           {"callactivity",lua_callactivity},
           NULL,NULL
         };
-        luaL_openlibs(L);
+        utils::luaopen(L);
         lua_newtable(L);
         luaL_setfuncs(L, reg, 0);
         lua_setglobal(L,"ST");
@@ -428,6 +454,32 @@ namespace atulocher{
         )return;
         if(v.empty())return;
         callactivity(v.c_str());
+      }
+      virtual void findEvent(const keyname & kl){
+        auto lt=lua_newthread(L);
+        
+        lua_getglobal(lt,"onLearnNew");
+        if(!lua_isfunction(lt,-1))return;
+        
+        lua_createtable(lt,0,4);
+        
+        lua_pushstring(lt,"keyword");
+        lua_pushstring(lt,kl.keyword.c_str());
+        lua_settable(lt,-3);
+        
+        lua_pushstring(lt,"actname");
+        lua_pushstring(lt,kl.actname.c_str());
+        lua_settable(lt,-3);
+        
+        lua_pushstring(lt,"parname");
+        lua_pushstring(lt,kl.parname.c_str());
+        lua_settable(lt,-3);
+        
+        lua_pushstring(lt,"target");
+        lua_pushstring(lt,kl.targ.c_str());
+        lua_settable(lt,-3);
+        
+        lua_pcall(lt,1,0,0);
       }
       #undef GETSELF
     };

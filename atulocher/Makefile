@@ -1,10 +1,13 @@
 all : atulocher
 	
-atulocher :module.hpp.gch \
+atulocher :utils.hpp.gch \
+           module.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
            dectree.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
+utils.hpp.gch : utils.hpp ../leveldb/include
+	g++ utils.hpp -std=c++0x 
 dectree.hpp.gch : dectree.hpp
 	g++ dectree.hpp -std=c++0x -I ../leveldb/include
 math.hpp.gch : math.hpp

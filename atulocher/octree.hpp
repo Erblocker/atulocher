@@ -4,6 +4,7 @@
 #include "rwmutex.hpp"
 #include <stdio.h>
 #include <mutex>
+#include <algorithm>
 #define FrontTopLeft      0
 #define FrontTopRight     1
 #define FrontBottomLeft   2
@@ -222,17 +223,53 @@ namespace octree{
       if(o->parent==NULL)return;
       o->parent->remove(o->area);
     }
-    void find(void(*callback)(octval*,void*),const vec & beg,const vec & end,void * arg)const{
+    void getchildlist(int * chs,const vec & beg,const vec & end,const vec & nori)const{
+      
+      vec center=(beg+end)/2.0;
+      struct Chl{
+        int index;
+        double length;
+      }chl[8];
+      Chl * pl[8];
+      
+      for(int i=0;i<8;i++){
+        chl[i].index=i;
+        pl[i]=&chl[i];
+        vec p=nori+(area2vec(i)*(this->length/2.0));
+        vec b(
+          p.x-center.x,
+          p.y-center.y,
+          p.z-center.z
+        );
+        chl[i].length=(b.x*b.x)+(b.y*b.y)+(b.z*b.z);
+        //平方是单调函数，并且肯定是非负数，所以就不用sqrt了
+      }
+      
+      std::sort(pl,pl+8,[](Chl * p1,Chl * p2){
+        return p1->length < p2->length;
+      });
+      
+      for(int i=0;i<8;i++){
+        chs[i]=pl[i]->index;
+      }
+    }
+    void find(void(*callback)(octval*,void*),const vec & beg,const vec & end,void * arg,bool issort)const{
       vec tbeg=this->orign;
-      vec tend;
-      tend(
+      vec tend(
         tbeg.x+this->length,
         tbeg.y+this->length,
         tbeg.z+this->length
       );
       
+      int chs[8]={0,1,2,3,4,5,6,7};
+      if(issort){
+        getchildlist(chs,beg,end,((tbeg+tend)/2.0));
+      }
+      
       if(!AABB(tbeg,tend,beg,end))return;
-      for(int i=0;i<8;i++){
+      for(int j=0;j<8;j++){
+        int i=chs[j];
+        
         double len=this->length/2.0d;
         
         tbeg=area2vec(i)*len+this->orign;
@@ -243,7 +280,7 @@ namespace octree{
         );
         if(AABB(tbeg,tend,beg,end)){
           if(child[i].mode==mode_Node){
-            child[i].val.node->find(callback,beg,end,arg);
+            child[i].val.node->find(callback,beg,end,arg,issort);
           }else
           if(child[i].mode==mode_Data){
             auto buf=child[i].val.data;
@@ -319,9 +356,9 @@ namespace octree{
       locker.unlock();
       return r;
     }
-    void find(void(*callback)(octreeNode::octval*,void*),const vec & beg,const vec & end,void * arg){
+    void find(void(*callback)(octreeNode::octval*,void*),const vec & beg,const vec & end,void * arg,bool issort=true){
       locker.Rlock();
-      tree->find(callback,beg,end,arg);
+      tree->find(callback,beg,end,arg,issort);
       locker.unlock();
     }
   };
