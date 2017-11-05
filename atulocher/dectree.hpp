@@ -11,6 +11,7 @@
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
 #include <unistd.h>
+#include <lua.hpp>
 #include "mempool.hpp"
 namespace atulocher{
   namespace dectree{
@@ -65,6 +66,7 @@ namespace atulocher{
       info * next,
            * gc_next;
       set<info*> depend;
+      string name;
       string answer;
       string res;
     };
@@ -78,8 +80,10 @@ namespace atulocher{
       string            treename;
       int        depth,       //搜索深度
                  step,        //行动次数
-                 nowDepth,    //上次获得结果的深度
-                 testTimes,   //尝试等级
+                 nowDepth,    //当前深度
+                 lastDepth,   //上次获得结果的深度
+                 testTimes,   //尝试次数
+                 testDepth,   //尝试层数
                  itTimes;     //迭代次数
       bool       succeed;
       virtual void findEvent(const list<string> &kl)=0;
@@ -126,6 +130,7 @@ namespace atulocher{
       }
       virtual void addknown(string name,string answer,string res,const set<string> & depend){
         auto p=gc.get();
+        p->name=name;
         p->answer=answer;
         p->res =res;
         for(auto it:depend){
@@ -145,7 +150,7 @@ namespace atulocher{
             &v
           ).ok()
         )return false;
-        if(k.empty())return false;
+        if(v.empty())return false;
         int times;
         string actname;
         istringstream iss(v);
@@ -218,6 +223,7 @@ namespace atulocher{
         }
       }
       virtual bool compute(){
+        this->lastDepth=0;
         string begact=" ";
         for(int i=0;i<itTimes;i++){
           if(succeed)return true;
@@ -230,6 +236,10 @@ namespace atulocher{
         if(step<0)return;
         nowDepth++;
         if(nowDepth>depth){
+          nowDepth--;
+          return;
+        }
+        if((nowDepth-lastDepth)>testDepth){
           nowDepth--;
           return;
         }
@@ -253,6 +263,7 @@ namespace atulocher{
         acts.clear();
         int i=0;
         for(auto it:actl){
+          check();
           if(succeed)return;
           doActivity(it.actname);
           i++;
@@ -264,6 +275,161 @@ namespace atulocher{
         succeed=false;
       }
       ~base(){}
+    };
+    class activity:public base{
+      public:
+      map<string,string> env;
+      lua_State * L;
+      activity(){
+        L=luaL_newstate();
+        this->luaopen();
+      }
+      ~activity(){
+        lua_close(L);
+      }
+      static inline int isptr(lua_State * L,int p){
+        return (lua_isuserdata(L,p));
+      }
+      static inline void * toptr(lua_State * L,int p){
+        if(lua_isuserdata(L,p)){
+          auto pt=(void **)lua_touserdata(L,p);
+          return *pt;
+        }else{
+          return NULL;
+        }
+      }
+      static inline void pushptr(lua_State * L,void * ptr){
+        auto pt=(void **)lua_newuserdata(L,sizeof(void*));
+        *pt=ptr;
+      }
+      
+      #define GETSELF \
+        if(!isptr(L,1))return 0;\
+        auto self=(activity*)toptr(L,1); 
+      
+      static int lua_getknown(lua_State * L){
+        GETSELF;
+        if(!lua_isstring(L,2))return 0;
+        auto it=self->known.find(lua_tostring(L,2));
+        if(it==self->known.end())return 0;
+        
+        auto pinfo=it->second;
+        
+        lua_createtable(L,0,4);
+        
+        lua_pushstring(L,"name");
+        lua_pushstring(L,pinfo->name.c_str());
+        lua_settable(L,-3);
+        
+        lua_pushstring(L,"answer");
+        lua_pushstring(L,pinfo->answer.c_str());
+        lua_settable(L,-3);
+        
+        lua_pushstring(L,"result");
+        lua_pushstring(L,pinfo->res.c_str());
+        lua_settable(L,-3);
+        
+        lua_pushstring(L,"depend");
+        lua_createtable(L,pinfo->depend.size(),0);//create new array
+        lua_pushnil(L);
+        lua_rawseti(L,-2,0);  //fill array[i][0]
+        int i=1;
+        for(auto itd:pinfo->depend){
+          lua_pushstring(L,itd->name.c_str());
+          lua_rawseti(L,-2,i);
+          i++;
+        }
+        lua_settable(L,-3);
+        
+        return 1;
+      }
+      static int lua_getenv(lua_State * L){
+        GETSELF;
+        if(!lua_isstring(L,2))return 0;
+        auto it=self->env.find(lua_tostring(L,2));
+        if(it==self->env.end())return 0;
+        lua_pushstring(L,it->second.c_str());
+        return 1;
+      }
+      static int lua_callactivity(lua_State * L){
+        GETSELF;
+        if(!lua_isstring(L,2))return 0;
+        self->callactivity(lua_tostring(L,2));
+        return 0;
+      }
+      static int lua_addknown(lua_State * L){
+        GETSELF;
+        if(!lua_isstring(L,2))return 0;
+        if(!lua_isstring(L,3))return 0;
+        if(!lua_isstring(L,4))return 0;
+        set<string> dep;
+        
+        string a=lua_tostring(L,2),
+               b=lua_tostring(L,3),
+               c=lua_tostring(L,4);
+              
+        if(lua_istable(L,-1)){
+          int n = luaL_len(L,-1);
+          for(int i=1;i<=n;i++){
+            lua_pushnumber(L,i);
+            lua_gettable(L,-2);
+            if(!lua_isstring(L,-1))continue;
+            dep.insert(lua_tostring(L,-1));
+            lua_pop(L,-1);
+          }
+        }
+        self->addknown(a,b,c,dep);
+        lua_pushboolean(L,1);
+        return 1;
+      }
+      
+      void luaopen(){
+        static luaL_Reg reg[]={
+          {"addknown",lua_addknown},
+          {"getknown",lua_getknown},
+          {"getenv",  lua_getenv},
+          {"callactivity",lua_callactivity},
+          NULL,NULL
+        };
+        luaL_openlibs(L);
+        lua_newtable(L);
+        luaL_setfuncs(L, reg, 0);
+        lua_setglobal(L,"ST");
+      }
+      virtual void callactivity(const char * name){
+        auto lt=lua_newthread(L);
+        
+        luaL_loadfile(lt,name);
+        
+        lua_getglobal(lt,"main");
+        if(!lua_isfunction(lt,-1))return;
+        
+        auto pt=(void **)lua_newuserdata(lt,sizeof(void*));
+        *pt=this;
+        
+        if(lua_pcall(lt,1,1,0)!=0){
+          
+        }else
+          if(lua_isinteger(lt,-1))
+            if(lua_tointeger(lt,-1)==0)
+              lastDepth=nowDepth;
+        lua_pop(lt,1);
+      }
+      virtual void doActivity(const string & actname){
+        string k="lua_activity_";
+        k+=actname;
+        string v;
+        if(
+          !db->Get(
+            leveldb::ReadOptions(),
+            k,
+            &v
+          ).ok()
+        )return;
+        if(v.empty())return;
+        callactivity(v.c_str());
+      }
+      #undef GETSELF
     };
   }
 }

@@ -1,7 +1,6 @@
 all : atulocher
 	
-atulocher :NN.hpp.gch \
-           module.hpp.gch \
+atulocher :module.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
            dectree.hpp.gch
@@ -12,16 +11,8 @@ math.hpp.gch : math.hpp
 	g++ math.hpp -std=c++0x
 kmeans.hpp.gch : kmeans.hpp
 	g++ kmeans.hpp -std=c++0x
-NN_layer.hpp.gch : NN_layer.hpp threadpool.hpp.gch mempool.hpp.gch
-	g++ NN_layer.hpp -std=c++0x
-NN_MCPU.hpp.gch : NN_MCPU.hpp NN_layer.hpp.gch
-	g++ NN_MCPU.hpp -std=c++0x
 GPU.hpp.gch : GPU.hpp
 	g++ GPU.hpp -std=c++0x
-NN_GPU.hpp.gch : NN_GPU.hpp NN_layer.hpp.gch GPU.hpp.gch
-	g++ NN_GPU.hpp -std=c++0x
-NN.hpp.gch : NN.hpp NN_MCPU.hpp.gch
-	g++ NN.hpp -std=c++0x
 active.hpp.gch : active.hpp bayes.hpp.gch
 	g++ active.hpp -std=c++0x
 bayes.hpp.gch : bayes.hpp
