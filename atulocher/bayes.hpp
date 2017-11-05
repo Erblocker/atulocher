@@ -61,7 +61,7 @@ namespace atulocher{
           sc[key].update(s);
         }
       }
-      int predict(const list<int> & arr,double * getp=NULL)const{
+      int predict(const list<int> & arr,double * getp=NULL,list<pair<int,double> > * allp=NULL)const{
         int out;
         double op=0;
         double bt=1;
@@ -85,6 +85,9 @@ namespace atulocher{
           if(bufp>op){
             op=bufp;
             out=it->first;
+          }
+          if(allp){
+            allp->push_back(pair<int,double>(it->first,bt*bufp));
           }
         }
         if(getp)*getp=op/bt;

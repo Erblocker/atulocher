@@ -3,10 +3,11 @@ all : atulocher
 atulocher :NN.hpp.gch \
            module.hpp.gch \
            language.hpp.gch \
-           active.hpp.gch
-	g++ main.cpp -std=c++0x -ldl -llua -lpthread \
-	-I ../leveldb/include \
-	../leveldb/out-static/libleveldb.a
+           active.hpp.gch \
+           dectree.hpp.gch
+	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
+dectree.hpp.gch : dectree.hpp
+	g++ dectree.hpp -std=c++0x -I ../leveldb/include
 math.hpp.gch : math.hpp
 	g++ math.hpp -std=c++0x
 kmeans.hpp.gch : kmeans.hpp
@@ -35,10 +36,8 @@ language.hpp.gch : language.hpp word2vec.hpp.gch sentree.hpp.gch
 	g++ language.hpp -std=c++0x -I ../crfpp
 sentree.hpp.gch : sentree.hpp
 	g++ sentree.hpp -std=c++0x -I ../ -I ../crfpp
-db.hpp.gch : db.hpp
-	g++ db.hpp -std=c++0x -I ../leveldb/include
 ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch
-	g++ ksphere.hpp -std=c++0x -I ../leveldb/include
+	g++ ksphere.hpp -std=c++0x
 luapool.hpp.gch : luapool.hpp
 	g++ luapool.hpp -std=c++0x
 word2vec.hpp.gch : word2vec.hpp ksphere.hpp.gch

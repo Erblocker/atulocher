@@ -6,7 +6,6 @@
 #include <map>
 #include "cppjieba/Jieba.hpp"
 namespace atulocher{
-  typedef octree::vec vec;
   class wlist{
     RWMutex locker;
     std::map<std::string,double> lst;
@@ -71,7 +70,7 @@ namespace atulocher{
       return res;
     }
   };
-  class word2vec:public cppjieba::Jieba,public wlist{
+  class word2vec_base:public wlist{
     //汉字转向量
     //使用前请自己准备cppjieba字典
     //还有足够的数据来训练思维球
@@ -104,16 +103,13 @@ namespace atulocher{
       res.push_back(wp(word,vv));
     }
     public:
+    typedef octree::vec vec;
+    virtual void cut(const std::string & word,std::vector<std::string> & words)=0;
     ksphere ks;
-    word2vec(
+    word2vec_base(
       const char * path,
-      const char * a,
-      const char * b,
-      const char * c,
-      const char * d,
-      const char * e,
       const char * w
-    ):ks(path),Jieba(a,b,c,d,e),wlist(w){
+    ):ks(path),wlist(w){
       
     }
     static size_t utf8_to_charset(const std::string &input,std::vector<std::string> &output){
@@ -137,7 +133,7 @@ namespace atulocher{
       }
       return output.size();
     }
-    void learn(
+    virtual void learn(
       std::string & word,
       const std::list< std::pair<std::string,double> > & mean
     ){
@@ -153,22 +149,18 @@ namespace atulocher{
       memcpy(sbuf,v.c_str(),3500);
       ar.add(word,sbuf);
     }
-    void getsimiler(std::string s,std::list<std::string> &words){
-      auto p=wordToVec(s);
-      
-    }
     inline void setWeighter(std::string s,double w){
       //定义词语权重设置器
       //可用于定义否定词，语气词等
       //例：setWeighter("否",-1.0d);
       wlist::set(s,w);
     }
-    octree::vec wordToVec(std::string word){
+    virtual octree::vec wordToVec(std::string word){
       if(word.empty())return octree::vec(0,0,0);
       auto p=ks.find(word.c_str());
       if(p)return p->obj.position;  //有现成的，直接返回
       std::vector<std::string> words;
-      this->Cut(word, words, false);
+      this->cut(word, words);
       double exp;
       if(words.size()==0)
         return octree::vec(0,0,0);  //无法分词
@@ -219,6 +211,29 @@ namespace atulocher{
         }
       }
       return ar.position;
+    }
+    virtual void getSimiler(const std::string & str,void(*callback)(const std::string&,const vec&,void*),double range,void *arg){
+      auto p=wordToVec(str);
+      
+      if(!callback)return;
+      struct self_o{
+        void(*callback)(const std::string&,const vec&,void*);
+        void * arg;
+      }self;
+      self.arg=arg;
+      self.callback=callback;
+      
+      ks.getnear(p,[](ksphere::knowledge * ks,void * s){
+        auto self=(self_o*)s;
+        self->callback(ks->key,ks->obj.position,self->arg);
+      },range,&self);
+    }
+  };
+  class word2vec:public word2vec_base{
+    public:
+    cppjieba::Jieba * jieba;
+    virtual void cut(const std::string & word,std::vector<std::string> & words){
+      jieba->Cut(word,words);
     }
   };
 }

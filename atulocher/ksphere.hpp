@@ -17,9 +17,10 @@
 */
 namespace atulocher{
   class ksphere{
-    octree::octree oct;
+    typedef octree::vec vec;
     RWMutex locker;
     public:
+    octree::octree oct;
     struct knowledge{
       octree::object obj;         //在八叉树中的节点
       bool           isTrue;      //正确性
@@ -242,6 +243,23 @@ namespace atulocher{
       if(norm==0.0d)goto beg;
       auto res=(p/norm)*10000000.0d;
       return res;
+    }
+    void getnear(const vec & p,void(*callback)(knowledge*,void*),double range,void *arg){
+      vec beg=p-vec(range,range,range);
+      vec end=p+vec(range,range,range);
+      
+      if(!callback)return;
+      struct self_o{
+        void(*callback)(knowledge*,void*);
+        void * arg;
+      }self;
+      self.arg=arg;
+      self.callback=callback;
+      
+      oct.find([](octree::octreeNode::octval * node,void * s){
+        auto self=(self_o*)s;
+        self->callback((knowledge*)(node->value),self->arg);
+      },beg,end,&self);
     }
     bool addaxion(const std::string & key,const std::string & value,octree::vec * posi=NULL){
       locker.Wlock();
