@@ -93,8 +93,12 @@ namespace atulocher{
                  searchTimes, //搜索次数
                  itTimes;     //迭代次数
       bool       succeed;
+      
       virtual void findEvent(const keyname &kl)=0;
       virtual void doActivity(const string & actname)=0;
+      virtual void getRememberFromBuffer(const char * ks,set<probinfo> & pis,int num,int * i)=0;
+      virtual void addIntoRememberBuffer(const string & s1,const string & s2,const probinfo & pp)=0;
+      
       virtual void print(list<string> & res,info * t,int maxsearchdeep=32){
         if(maxsearchdeep<0)return;
         res.push_front(t->answer);
@@ -111,9 +115,8 @@ namespace atulocher{
         
       }
       virtual void learnOne(const keyname &kl){
-        string k;
-        getKey(kl,k);
-        if(!logEvent(k))findEvent(kl);
+        if(!logEvent(kl))
+          findEvent(kl);
       }
       virtual void learn(const list<string> &path){
         auto last=path.end();
@@ -166,7 +169,10 @@ namespace atulocher{
         }
         known[name]=p;
       }
-      virtual bool logEvent(const string & k,int atms=1){
+      virtual bool logEvent(const keyname &kl,int atms=1){
+        string k;
+        getKey(kl,k);
+        
         string v;
         if(
           !db->Get(
@@ -181,6 +187,16 @@ namespace atulocher{
         istringstream iss(v);
         iss>>times;
         iss>>actname;
+        
+        keyname bkl=kl;
+        string  bks;
+        bkl.actname.clear();
+        getKey(bkl,bks);
+        probinfo pp;
+        pp.times=times;
+        pp.actname=actname;
+        addIntoRememberBuffer(bks,kl.actname,pp);
+        
         if(actname.empty())return false;
         times+=atms;
         char tm[32];
@@ -224,13 +240,12 @@ namespace atulocher{
         succeed=true;
         return true;
       }
-      inline void getRememberFromDB(const char * ks,set<probinfo> & pis,int num){
+      virtual void getRememberFromDB(const char * ks,set<probinfo> & pis,int num,int * i){
         leveldb::ReadOptions options;
         //options.snapshot = db->GetSnapshot();
         leveldb::Iterator* it = db->NewIterator(options);
-        int i=0;
         for(it->Seek(ks);(it->Valid() && prefix_match(ks,it->key().data()));it->Next()){
-          if(i>num)break;
+          if(*i>num)break;
           probinfo p;
           p.key=it->key().data();
           istringstream iss(it->value().data());
@@ -238,12 +253,14 @@ namespace atulocher{
           iss>>p.actname;
           if(p.actname.empty())continue;
           pis.insert(p);
-          i++;
+          *i++;
         }
         delete it;
       }
       virtual void getRemember(const char * ks,set<probinfo> & pis){
-        getRememberFromDB(ks,pis,searchTimes);
+        int i=0;
+        getRememberFromBuffer(ks,pis,searchTimes,&i);
+        getRememberFromDB(ks,pis,searchTimes,&i);
       }
       virtual void search(const keyname & dep,map<string,int> & acts){
         string k;
@@ -528,13 +545,67 @@ namespace atulocher{
       }
       #undef GETSELF
     };
+    class forgetbuffer{
+      public:
+      struct elm{
+        int    times;
+        string actname;
+      };
+      typedef map<string,elm>    values;
+      typedef map<string,values> timechunk;
+      list<timechunk> datas;
+      void find(const char * ks,set<probinfo> & pis,int num,int * i){
+        string cond=ks;
+        for(auto it1:datas){
+          auto it2=it1.find(cond);
+          if(it2!=it1.end()){
+            for(auto it:it2->second){
+              if(*i>num)break;
+              probinfo p;
+              p.key     =it.first;
+              p.times   =it.second.times;
+              p.actname =it.second.actname;
+              if(p.actname.empty())continue;
+              pis.insert(p);
+              *i++;
+            }
+            return;
+          }
+        }
+      }
+      void add(const string & s1,const string & s2,const probinfo & dori){
+        if(datas.begin()==datas.end()){
+          datas.push_front(timechunk());
+        }
+        elm d;
+        d.actname=dori.actname;
+        d.times  =dori.times;
+        (*datas.begin())[s1][s2]=d;
+      }
+      void forget(){
+        if(datas.begin()==datas.end())return;
+        datas.pop_back();
+        datas.push_front(timechunk());
+      }
+      void creatchunk(int num){
+        for(int i=0;i<num;i++){
+          datas.push_front(timechunk());
+        }
+      }
+    };
     class forget{
       public:
-      char * corebuffer;  //核心缓冲区
-                          //查找数据优先在这里查，找不到才到数据库
+      forgetbuffer corebuffer;//核心缓冲区（核心记忆？）
+                              //查找数据优先在这里查，找不到才到数据库
     };
     class dectree:public activity,public forget{
-      
+      public:
+      virtual void getRememberFromBuffer(const char * ks,set<probinfo> & pis,int num,int * i){
+        corebuffer.find(ks,pis,num,i);
+      }
+      virtual void addIntoRememberBuffer(const string & s1,const string & s2,const probinfo & pp){
+        corebuffer.add(s1,s2,pp);
+      }
     };
   }
 }

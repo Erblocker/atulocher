@@ -253,7 +253,9 @@ namespace octree{
         chs[i]=pl[i]->index;
       }
     }
-    void find(void(*callback)(octval*,void*),const vec & beg,const vec & end,void * arg,bool issort)const{
+    void find(void(*callback)(octval*,void*),const vec & beg,const vec & end,void * arg,bool issort,int lim)const{
+      if(lim==0)return;
+      int rl=lim;
       vec tbeg=this->orign;
       vec tend(
         tbeg.x+this->length,
@@ -280,12 +282,14 @@ namespace octree{
         );
         if(AABB(tbeg,tend,beg,end)){
           if(child[i].mode==mode_Node){
-            child[i].val.node->find(callback,beg,end,arg,issort);
+            child[i].val.node->find(callback,beg,end,arg,issort,rl);
           }else
           if(child[i].mode==mode_Data){
             auto buf=child[i].val.data;
             if(isinbox(tbeg,buf->position,len)){
+              if(rl==0)return;
               callback(buf,arg);
+              rl--;
             }
           }else{
             
@@ -356,9 +360,9 @@ namespace octree{
       locker.unlock();
       return r;
     }
-    void find(void(*callback)(octreeNode::octval*,void*),const vec & beg,const vec & end,void * arg,bool issort=true){
+    void find(void(*callback)(octreeNode::octval*,void*),const vec & beg,const vec & end,void * arg,bool issort=true,int lim=-1){
       locker.Rlock();
-      tree->find(callback,beg,end,arg,issort);
+      tree->find(callback,beg,end,arg,issort,lim);
       locker.unlock();
     }
   };
