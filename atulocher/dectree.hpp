@@ -82,7 +82,8 @@ namespace atulocher{
       GC                gc;
       leveldb::DB     * db;
       map<string,info*> known;
-      set<string>       target;
+      set<string>       target,
+                        want;
       string            treename;
       int        depth,       //搜索深度
                  step,        //行动次数
@@ -97,6 +98,8 @@ namespace atulocher{
       virtual void findEvent(const keyname &kl)=0;
       virtual void doActivity(const string & actname)=0;
       virtual void getRememberFromBuffer(const char * ks,set<probinfo> & pis,int num,int * i)=0;
+      virtual void ask(const char * ks,set<probinfo> & pis,int num,int * i)=0;
+      virtual void think(const char * ks,set<probinfo> & pis,int num,int * i)=0;
       virtual void addIntoRememberBuffer(const string & s1,const string & s2,const probinfo & pp)=0;
       
       virtual void print(list<string> & res,info * t,int maxsearchdeep=32){
@@ -106,7 +109,7 @@ namespace atulocher{
           this->print(res,it,maxsearchdeep-1);
       }
       virtual void print(list<string> & res){
-        for(auto it:target){
+        for(auto it:want){
           auto p=known.find(it);
           if(p!=known.end()){
             this->print(res,p->second);
@@ -192,6 +195,7 @@ namespace atulocher{
         string  bks;
         bkl.actname.clear();
         getKey(bkl,bks);
+        
         probinfo pp;
         pp.times=times;
         pp.actname=actname;
@@ -253,6 +257,10 @@ namespace atulocher{
           iss>>p.actname;
           if(p.actname.empty())continue;
           pis.insert(p);
+          
+          string bks=ks;
+          addIntoRememberBuffer(bks,p.actname,p);
+          
           *i++;
         }
         delete it;
@@ -260,7 +268,14 @@ namespace atulocher{
       virtual void getRemember(const char * ks,set<probinfo> & pis){
         int i=0;
         getRememberFromBuffer(ks,pis,searchTimes,&i);
+        
+        if(i>searchTimes)return;
+        this->think(ks,pis,searchTimes,&i);
+        
         getRememberFromDB(ks,pis,searchTimes,&i);
+        
+        if(i>searchTimes)return;
+        this->ask(ks,pis,searchTimes,&i);
       }
       virtual void search(const keyname & dep,map<string,int> & acts){
         string k;
@@ -278,6 +293,9 @@ namespace atulocher{
         }
       }
       virtual bool compute(){
+        target.clear();
+        for(auto it:want)
+          target.insert(it);
         this->lastDepth=0;
         string begact=" ";
         for(int i=0;i<itTimes;i++){
@@ -424,6 +442,12 @@ namespace atulocher{
         );
         return 0;
       }
+      static int lua_addtarget(lua_State * L){
+        GETSELF;
+        if(!lua_isstring(L,2))return 0;
+        self->target.insert(lua_tostring(L,2));
+        return 0;
+      }
       static int lua_addknown(lua_State * L){
         GETSELF;
         if(!lua_isstring(L,2))return 0;
@@ -453,6 +477,7 @@ namespace atulocher{
       void luaopen(){
         static luaL_Reg reg[]={
           {"addknown",lua_addknown},
+          {"addtarget",lua_addtarget},
           {"addactivity",lua_addactivity},
           {"getknown",lua_getknown},
           {"getenv",  lua_getenv},
@@ -587,15 +612,21 @@ namespace atulocher{
         datas.pop_back();
         datas.push_front(timechunk());
       }
-      void creatchunk(int num){
+      void createchunk(int num){
         for(int i=0;i<num;i++){
           datas.push_front(timechunk());
+        }
+      }
+      void dropchunk(int num){
+        for(int i=0;i<num;i++){
+          if(datas.empty())return;
+          datas.pop_back();
         }
       }
     };
     class forget{
       public:
-      forgetbuffer corebuffer;//核心缓冲区（核心记忆？）
+      forgetbuffer corebuffer;//核心缓存（核心记忆？）
                               //查找数据优先在这里查，找不到才到数据库
     };
     class dectree:public activity,public forget{
@@ -605,6 +636,12 @@ namespace atulocher{
       }
       virtual void addIntoRememberBuffer(const string & s1,const string & s2,const probinfo & pp){
         corebuffer.add(s1,s2,pp);
+      }
+      virtual void ask(const char * ks,set<probinfo> & pis,int num,int * i){
+        
+      }
+      virtual void think(const char * ks,set<probinfo> & pis,int num,int * i){
+        
       }
     };
   }

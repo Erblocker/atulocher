@@ -244,7 +244,7 @@ namespace atulocher{
       auto res=(p/norm)*10000000.0d;
       return res;
     }
-    void getnear(const vec & p,void(*callback)(knowledge*,void*),double range,void *arg){
+    void getnear(const vec & p,void(*callback)(knowledge*,void*),double range,void *arg,int num=-1){
       vec beg=p-vec(range,range,range);
       vec end=p+vec(range,range,range);
       
@@ -259,7 +259,7 @@ namespace atulocher{
       oct.find([](octree::octreeNode::octval * node,void * s){
         auto self=(self_o*)s;
         self->callback((knowledge*)(node->value),self->arg);
-      },beg,end,&self);
+      },beg,end,&self,true,num);
     }
     bool addaxion(const std::string & key,const std::string & value,octree::vec * posi=NULL){
       locker.Wlock();
@@ -282,7 +282,8 @@ namespace atulocher{
             ((of_t*)ot)->num++;
           },
           octree::vec(-100,-100,-100)+p,
-          octree::vec(100 ,100 , 100)+p,&ot
+          octree::vec(100 ,100 , 100)+p,
+          &ot,true,1
         );//搜索附近的点
         if(ot.num>0)goto get_position;//存在，重新产生坐标
         ot.num=0;
