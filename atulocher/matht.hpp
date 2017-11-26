@@ -2,6 +2,7 @@
 #define atulocher_matht
 #include "mempool.hpp"
 #include "utils.hpp"
+#include "vec3.hpp"
 #include <exception>
 #include <math.h>
 #include <stdio.h>
@@ -44,7 +45,10 @@ namespace atulocher{
       }
       bool operator==(const simple & n)const{
         if(down==n.down){
-          if(down==0)return true;//无穷大等于无穷大
+          if(down==0){
+            throw UnExcNum();
+            return true;//无穷大等于无穷大
+          }
           if(
             up==n.up &&
             unknowValue==n.unknowValue
@@ -78,10 +82,13 @@ namespace atulocher{
       #undef checkunknow
       #undef checkmax
       
-      simple(){
+      void zero(){
         up=0;
         down=1;
         unknowValue='\0';
+      }
+      simple(){
+        this->zero();
       }
       simple(const simple&)=default;
       simple(double n){
@@ -111,6 +118,8 @@ namespace atulocher{
         }
       }
       static inline void tosame(simple & p1,simple & p2){
+        if(p1.down==p2.down)
+          return;
         double d1=p1.down,
                d2=p2.down;
         p1.up*=d2;
@@ -168,52 +177,51 @@ namespace atulocher{
         return *this;
       }
     };
-    class number{
+    class number:public vec3<simple> {
       public:
-      simple w,x,y,z;
       void tostring(std::string & str)const{
         str.clear();
         bool havev=false;
         std::string buf;
         
-        if(!w.iszero()){havev=true;w.tostring(buf);str+=buf;}
+        if(!x.iszero()){havev=true;x.tostring(buf);str+=buf;}
         if(havev)str+="+";
-        if(!x.iszero()){havev=true;x.tostring(buf);str+=buf+"*i";}
+        if(!y.iszero()){havev=true;y.tostring(buf);str+=buf+"*i";}
         if(havev)str+="+";
-        if(!y.iszero()){havev=true;y.tostring(buf);str+=buf+"*j";}
-        if(havev)str+="+";
-        if(!z.iszero()){havev=true;z.tostring(buf);str+=buf+"*k";}
+        if(!z.iszero()){havev=true;z.tostring(buf);str+=buf+"*j";}
       }
       bool isinR()const{
-        if(!x.iszero())return false;
         if(!y.iszero())return false;
         if(!z.iszero())return false;
         return true;
       }
       bool isinN()const{
         if(!isinR())return false;
-        if(w.error())return false;
-        auto n=w.up/w.down;
+        if(x.error())return false;
+        auto n=x.up/x.down;
         auto nb=floor(n);
         return n==nb;
       }
       inline number & operator+=(const number & p){
-        w+=p.w;
         x+=p.x;
         y+=p.y;
         z+=p.z;
         return *this;
       }
       inline number & operator-=(const number & p){
-        w-=p.w;
         x-=p.x;
         y-=p.y;
         z-=p.z;
         return *this;
       }
+      inline number & zero(){
+        x.zero();
+        y.zero();
+        z.zero();
+        return *this;
+      }
       inline number operator+(const number & n)const{
         number tmp=*this;
-        tmp.w+=n.w;
         tmp.x+=n.x;
         tmp.y+=n.y;
         tmp.z+=n.z;
@@ -221,7 +229,6 @@ namespace atulocher{
       }
       inline number operator-(const number & n)const{
         number tmp=*this;
-        tmp.w-=n.w;
         tmp.x-=n.x;
         tmp.y-=n.y;
         tmp.z-=n.z;
@@ -229,7 +236,6 @@ namespace atulocher{
       }
       inline number operator-()const{
         number tmp=*this;
-        tmp.w=-w;
         tmp.x=-x;
         tmp.y=-y;
         tmp.z=-z;
@@ -341,7 +347,11 @@ namespace atulocher{
           if(el->child_right && el->child_right->mode==VALUE &&
                el->child_left && el->child_left->mode==VALUE
           ){
-            el->value=el->child_left->value+el->child_right->value;
+              try{
+                el->value=el->child_left->value+el->child_right->value;
+              }catch(UnExcNum &){
+                el->value.zero();
+              }
               el->child_left->destruct();
               el->child_right->destruct();
               el->child_left =NULL;
@@ -359,7 +369,11 @@ namespace atulocher{
         virtual void compute(element * el){
           if(el->child_right && el->child_right->mode==VALUE){
             if(el->child_left && el->child_left->mode==VALUE){
-              el->value=el->child_left->value-el->child_right->value;
+              try{
+                el->value=el->child_left->value-el->child_right->value;
+              }catch(UnExcNum &){
+                el->value.zero();
+              }
               el->child_left->destruct();
               el->child_right->destruct();
               el->child_left =NULL;
@@ -670,6 +684,9 @@ namespace atulocher{
     }
     virtual void foreach(void(*callback)(element*,void*),void * arg){
       root->foreach(callback,arg);
+    }
+    virtual void compute(){
+      root->compute();
     }
   };
 }

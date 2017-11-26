@@ -102,15 +102,22 @@ namespace atulocher{
     T invnorm()const{
       return 1/sqrt((x*x)+(y*y)+(z*z));
     }
+    T length2(const vec3<T> &p)const{
+      auto t=p-(*this);
+      return ((t.x*t.x)+(t.y*t.y)+(t.z*t.z));
+    }
+    T length(const vec3<T> &p)const{
+      return sqrt(length2(p));
+    }
     T pro(const vec3<T> *p)const{
-      return sqrt(
+      return (
         (x*p->x)+
         (y*p->y)+
         (z*p->z)
       );
     }
     T pro(const vec3<T> &p)const{
-      return sqrt(
+      return (
         (x*p.x)+
         (y*p.y)+
         (z*p.z)

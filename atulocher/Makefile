@@ -3,13 +3,21 @@ all : atulocher
 atulocher :utils.hpp.gch \
            module.hpp.gch \
            matht.hpp.gch \
+           graph.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
-           dectree.hpp.gch
+           dectree.hpp.gch \
+           lstm.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
 
 utils.hpp.gch : utils.hpp
 	g++ utils.hpp -std=c++0x -I  ../leveldb/include
+
+lstm.hpp.gch : lstm.hpp
+	g++ lstm.hpp -std=c++0x
+
+graph.hpp.gch : graph.hpp
+	g++ graph.hpp -std=c++0x
 
 matht.hpp.gch : matht.hpp
 	g++ matht.hpp -std=c++0x

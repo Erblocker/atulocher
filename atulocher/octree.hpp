@@ -253,6 +253,45 @@ namespace octree{
         chs[i]=pl[i]->index;
       }
     }
+    void find_if(
+      void(*callback)(octval*,void*),
+      bool(*cond)(const vec & ,void*),
+      void * arg
+    )const{
+      vec tbeg=this->orign;
+      vec tcen(
+        tbeg.x+this->length/2.0,
+        tbeg.y+this->length/2.0,
+        tbeg.z+this->length/2.0
+      );
+      
+      //if(!cond(tcen,arg))return;
+      
+      for(int i=0;i<8;i++){
+        double len=this->length/4.0d;
+        
+        tbeg=area2vec(i)*len+this->orign;
+        tcen(
+          tbeg.x+len,
+          tbeg.y+len,
+          tbeg.z+len
+        );
+        if(cond(tcen,arg)){
+          if(child[i].mode==mode_Node){
+            child[i].val.node->find_if(callback,cond,arg);
+          }else
+          if(child[i].mode==mode_Data){
+            auto buf=child[i].val.data;
+            if(cond(buf->position,arg)){
+              callback(buf,arg);
+            }
+          }else{
+          }
+        }else{
+          continue;
+        }
+      }
+    }
     void find(void(*callback)(octval*,void*),const vec & beg,const vec & end,void * arg,bool issort,int lim)const{
       if(lim==0)return;
       int rl=lim;
@@ -268,7 +307,8 @@ namespace octree{
         getchildlist(chs,beg,end,((tbeg+tend)/2.0));
       }
       
-      if(!AABB(tbeg,tend,beg,end))return;
+      //if(!AABB(tbeg,tend,beg,end))return;
+      
       for(int j=0;j<8;j++){
         int i=chs[j];
         
@@ -353,17 +393,70 @@ namespace octree{
       tree->cleanNode();
       gc.del(tree);
     }
-    bool insert(octreeNode::octval * d){
+    inline bool insert(octreeNode::octval * d){
       locker.Wlock();
-      //printf("(%f,%f,%f)\n",d->position.x,d->position.y,d->position.z);
       auto r= tree->insert(d);
       locker.unlock();
       return r;
     }
-    void find(void(*callback)(octreeNode::octval*,void*),const vec & beg,const vec & end,void * arg,bool issort=true,int lim=-1){
+    inline void find(void(*callback)(octreeNode::octval*,void*),const vec & beg,const vec & end,void * arg,bool issort=true,int lim=-1){
       locker.Rlock();
       tree->find(callback,beg,end,arg,issort,lim);
       locker.unlock();
+    }
+    inline void find_if(
+      void(*callback)(octreeNode::octval*,void*) ,
+      bool(*cond)(const vec & ,void*),
+      void * arg
+    ){
+      locker.Rlock();
+      tree->find_if(callback,cond,arg);
+      locker.unlock();
+    }
+    void findInLine(
+      void(*callback)(octreeNode::octval*,void*),
+      const vec & q,//起点
+      const vec & s,//方向
+      double range, //射程
+      double R,
+      void * arg
+    ){
+      struct sf{
+        vec q;
+        vec s;
+        void * arg;
+        double range;
+        double R;
+        void(*callback)(octreeNode::octval*,void*);
+      }self;
+      self.callback=callback;
+      self.q=q;
+      self.s=s;
+      self.arg=arg;
+      self.R=R;
+      self.range=range;
+      
+      this->find_if(
+        [](octreeNode::octval * v,void * a){
+          auto self=(sf*)a;
+          self->callback(v,self->arg);
+        },
+        [](const vec & v,void * a)->bool{
+          auto self=(sf*)a;
+          if(v.length2(self->q)>(self->range*self->range))
+            return false;
+          
+          double a_s=self->s.norm();
+          if(a_s==0)return true;
+          double a_q=((self->q-v)*self->s).norm();
+          auto len=a_q/a_s;
+          
+          if(len>(self->R))
+            return false;
+          return true;
+        },
+        &self
+      );
     }
   };
   typedef octreeNode::octval object;
