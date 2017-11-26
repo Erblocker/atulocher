@@ -2,9 +2,9 @@
 #define atulocher_matht
 #include "mempool.hpp"
 #include "utils.hpp"
-#include "vec3.hpp"
 #include <exception>
 #include <math.h>
+#include <stdio.h>
 namespace atulocher{
   class matht{
     //library:math_t
@@ -29,6 +29,19 @@ namespace atulocher{
         }
         return (up/down);
       }
+      bool iszero()const{
+        return up==0;
+      }
+      bool error()const{
+        return down==0;
+      }
+      bool isone()const{
+        if(down==0){
+          throw UnExcNum();
+          return false;
+        }
+        return up==down;
+      }
       bool operator==(const simple & n)const{
         if(down==n.down){
           if(down==0)return true;//无穷大等于无穷大
@@ -49,8 +62,8 @@ namespace atulocher{
           return false;\
         }
       #define checkmax(x,y) \
-        if(x->down==0){throw UnknowValue();return false;}\
-        if(y->down==0){throw UnknowValue();return false;}\
+        if(x->down==0){throw UnExcNum();return false;}\
+        if(y->down==0){throw UnExcNum();return false;}\
         auto a=x->up/x->down;\
         auto b=y->up/y->down;\
         return a>b;
@@ -80,9 +93,148 @@ namespace atulocher{
         down=1;
         return *this;
       }
+      simple operator-()const{
+        simple tmp=*this;
+        tmp.up=-up;
+        return tmp;
+      }
+      void tostring(std::string & str)const{
+        char buf[256];
+        if(down-1.0==0)
+          snprintf(buf,256,"%lf",up);
+        else
+          snprintf(buf,256,"(%lf/%lf)",up,down);
+        str=buf;
+        if(unknowValue){
+          str+='*';
+          str+=unknowValue;
+        }
+      }
+      static inline void tosame(simple & p1,simple & p2){
+        double d1=p1.down,
+               d2=p2.down;
+        p1.up*=d2;
+        p1.down*=d2;
+        p2.up*=d1;
+        p2.down*=d1;
+      }
+      simple operator+(const simple & p)const{
+        simple tmp1=*this,
+               tmp2=p;
+        tosame(tmp1,tmp2);
+        tmp1.up+=tmp2.up;
+        return tmp1;
+      }
+      simple operator-(const simple & p)const{
+        simple tmp1=*this,
+               tmp2=p;
+        tosame(tmp1,tmp2);
+        tmp1.up-=tmp2.up;
+        return tmp1;
+      }
+      simple operator*(const simple & p)const{
+        simple tmp1=*this,
+               tmp2=p;
+        if(tmp1.error())throw UnExcNum();
+        if(tmp2.error())throw UnExcNum();
+        tmp1.up*=tmp2.up;
+        tmp1.down*=tmp2.down;
+        return tmp1;
+      }
+      simple operator/(const simple & p)const{
+        simple tmp1=*this,
+               tmp2=p;
+        if(tmp1.error()) throw UnExcNum();
+        if(tmp2.error()) throw UnExcNum();
+        if(tmp2.iszero())throw UnExcNum();
+        tmp1.up*=tmp2.down;
+        tmp1.down*=tmp2.up;
+        return tmp1;
+      }
+      inline simple & operator+=(const simple & p){
+        *this=*this+p;
+        return *this;
+      }
+      inline simple & operator-=(const simple & p){
+        *this=*this-p;
+        return *this;
+      }
+      inline simple & operator*=(const simple & p){
+        *this=*this*p;
+        return *this;
+      }
+      inline simple & operator/=(const simple & p){
+        *this=*this/p;
+        return *this;
+      }
     };
-    class number:public vec3<simple>{
-      
+    class number{
+      public:
+      simple w,x,y,z;
+      void tostring(std::string & str)const{
+        str.clear();
+        bool havev=false;
+        std::string buf;
+        
+        if(!w.iszero()){havev=true;w.tostring(buf);str+=buf;}
+        if(havev)str+="+";
+        if(!x.iszero()){havev=true;x.tostring(buf);str+=buf+"*i";}
+        if(havev)str+="+";
+        if(!y.iszero()){havev=true;y.tostring(buf);str+=buf+"*j";}
+        if(havev)str+="+";
+        if(!z.iszero()){havev=true;z.tostring(buf);str+=buf+"*k";}
+      }
+      bool isinR()const{
+        if(!x.iszero())return false;
+        if(!y.iszero())return false;
+        if(!z.iszero())return false;
+        return true;
+      }
+      bool isinN()const{
+        if(!isinR())return false;
+        if(w.error())return false;
+        auto n=w.up/w.down;
+        auto nb=floor(n);
+        return n==nb;
+      }
+      inline number & operator+=(const number & p){
+        w+=p.w;
+        x+=p.x;
+        y+=p.y;
+        z+=p.z;
+        return *this;
+      }
+      inline number & operator-=(const number & p){
+        w-=p.w;
+        x-=p.x;
+        y-=p.y;
+        z-=p.z;
+        return *this;
+      }
+      inline number operator+(const number & n)const{
+        number tmp=*this;
+        tmp.w+=n.w;
+        tmp.x+=n.x;
+        tmp.y+=n.y;
+        tmp.z+=n.z;
+        return tmp;
+      }
+      inline number operator-(const number & n)const{
+        number tmp=*this;
+        tmp.w-=n.w;
+        tmp.x-=n.x;
+        tmp.y-=n.y;
+        tmp.z-=n.z;
+        return tmp;
+      }
+      inline number operator-()const{
+        number tmp=*this;
+        tmp.w=-w;
+        tmp.x=-x;
+        tmp.y=-y;
+        tmp.z=-z;
+        return tmp;
+      }
     };
     class element{//式
       friend class matht;
@@ -105,12 +257,127 @@ namespace atulocher{
       }Mode;
       Mode mode;
       
+      //element configs
       class Config{
         public:
         virtual void compute(element*)=0;//对应的算法，加减乘除……
         virtual void computeAll(element*)=0;//完全展开
         virtual void tostring(element*,std::string&)=0;
       }*config;
+      class config_operator:public Config{
+        public:
+        std::string stroper;
+        virtual void compute(element*){}
+        virtual void computeAll(element*){}
+        virtual void tostring(element * el,std::string & str){
+          std::string buf,bufc;
+          int eln=0;
+          if(el->child_left){
+            ++eln;
+            el->child_left->tostring(bufc);
+            buf+=bufc;
+            buf+=this->stroper;
+          }
+          if(el->child_right){
+            ++eln;
+            el->child_right->tostring(bufc);
+            buf+=bufc;
+          }
+          if(eln==2){
+            str="(";
+            str+=buf;
+            str+=")";
+          }else{
+            str=buf;
+          }
+        }
+      };
+      class config_function:public Config{
+        public:
+        std::string strfunc;
+        int argn;
+        config_function(){
+          argn=2;
+        }
+        virtual void compute(element*){}
+        virtual void computeAll(element * el){
+          el->child_left->computeAll();
+          el->child_right->computeAll();
+          el->compute();
+        }
+        virtual void tostring_left(element * el,std::string & buf,int & eln){
+          if(eln==argn)return;
+          std::string bufc;
+          if(el->child_left){
+            ++eln;
+            el->child_left->tostring(bufc);
+            buf+=bufc;
+            buf+=",";
+          }
+        }
+        virtual void tostring_right(element * el,std::string & buf,int & eln){
+          if(eln==argn)return;
+          std::string bufc;
+          if(el->child_right){
+            ++eln;
+            el->child_right->tostring(bufc);
+            buf+=bufc;
+          }
+        }
+        virtual void tostring(element * el,std::string & str){
+          int eln=0;
+          str=this->strfunc+"(";
+          tostring_left(el,str,eln);
+          tostring_right(el,str,eln);
+          str+=")";
+        }
+      };
+      class add:public config_operator{
+        public:
+        add(){
+          stroper="+";
+        }
+        virtual void compute(element * el){
+          if(el->child_right && el->child_right->mode==VALUE &&
+               el->child_left && el->child_left->mode==VALUE
+          ){
+            el->value=el->child_left->value+el->child_right->value;
+              el->child_left->destruct();
+              el->child_right->destruct();
+              el->child_left =NULL;
+              el->child_right=NULL;
+              el->mode=VALUE;
+              el->config=NULL;
+          }
+        }
+      };
+      class sub:public config_operator{
+        public:
+        sub(){
+          stroper="-";
+        }
+        virtual void compute(element * el){
+          if(el->child_right && el->child_right->mode==VALUE){
+            if(el->child_left && el->child_left->mode==VALUE){
+              el->value=el->child_left->value-el->child_right->value;
+              el->child_left->destruct();
+              el->child_right->destruct();
+              el->child_left =NULL;
+              el->child_right=NULL;
+              el->mode=VALUE;
+              el->config=NULL;
+            }else{
+              el->child_right->value=-el->child_right->value;
+            }
+          }
+        }
+      };
+      template<typename T>
+      inline void setconfig(){
+        static T defc;
+        this->config=&defc;
+      }
+      //element configs end
       
       void setAs(const element * p){
         config=p->config;
@@ -214,20 +481,23 @@ namespace atulocher{
       #undef checknode
       
       inline void compute(){
-        this->config->compute(this);
+        if(config)this->config->compute(this);
       }
       inline void computeAll(){
-        this->config->computeAll(this);
+        if(config)this->config->computeAll(this);
       }
-      inline void tostring(std::string & str){
-        this->config->tostring(this,str);
+      void tostring(std::string & str){
+        if(mode==CHILDREN)
+          this->config->tostring(this,str);
+        else
+          value.tostring(str);
       }
-      
       void construct(){
         child_left=NULL;
         child_right=NULL;
         parent=NULL;
         mode=VALUE;
+        setconfig<add>();
       }
       
       void destruct(){
@@ -377,11 +647,18 @@ namespace atulocher{
     #undef resetroot
     
     //一些封装
+    virtual element * createNode(const number & n){
+      auto p=get();
+      p->value=n;
+      p->config=NULL;
+      p->mode=element::VALUE;
+      return p;
+    }
     virtual element * clone(const matht * p){
-      this->clone(p->root);
+      return this->clone(p->root);
     }
     virtual element * clone(const matht & p){
-      this->clone(p.root);
+      return this->clone(p.root);
     }
     virtual void put_front(const matht & p){
       auto pn=clone(p.root);
