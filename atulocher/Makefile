@@ -6,8 +6,16 @@ atulocher :utils.hpp.gch \
            graph.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
-           dectree.hpp.gch
+           dectree.hpp.gch \
+           rpc.hpp.gch \
+           ttree.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
+
+ttree.hpp.gch : ttree.hpp
+	g++ ttree.hpp -std=c++0x
+
+rpc.hpp.gch : rpc.hpp
+	g++ rpc.hpp -std=c++0x
 
 utils.hpp.gch : utils.hpp
 	g++ utils.hpp -std=c++0x -I  ../leveldb/include

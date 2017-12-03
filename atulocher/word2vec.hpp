@@ -1,80 +1,14 @@
-#ifndef atulocher_vord2vec
-#define atulocher_vord2vec
+#ifndef atulocher_word2vec
+#define atulocher_word2vec
 #include "ksphere.hpp"
 #include <list>
 #include <vector>
 #include <map>
-#include "cppjieba/Jieba.hpp"
 namespace atulocher{
-  class wlist{
-    RWMutex locker;
-    std::map<std::string,double> lst;
-    void readconfigline(const char * str){
-      std::istringstream iss(str);
-      double w;
-      std::string s;
-      iss>>s;
-      iss>>w;
-      if(s.empty())return;
-      lst[s]=w;
-    }
-    void readconfig(const char * path){
-      FILE * fp=NULL;
-      fp=fopen(path,"r");
-      if(fp==NULL)return;
-      char buf[4096];
-      while(!feof(fp)){
-        bzero(buf,4096);
-        fgets(buf,4096,fp);
-        ksphere::confrep(buf);
-        if(strlen(buf)<1)continue;
-        readconfigline(buf);
-      }
-      fclose(fp);
-    }
-    void writeconfig(const char * str,double weig){
-      char buf[4096];
-      snprintf(buf,4096,"%s %f #time:%d\n",
-        str,
-        weig,
-        time(0)
-      );
-      fwrite(buf,strlen(buf),1,fd);
-    }
-    FILE * fd;
-    public:
-    wlist(const char * path){
-      readconfig(path);
-      fd=fopen(path,"a");
-    }
-    ~wlist(){
-      if(fd)fclose(fd);
-    }
-    void set(std::string kw,double w){
-      locker.Wlock();
-      lst[kw]=w;
-      writeconfig(kw.c_str(),w);
-      locker.unlock();
-    }
-    bool get(std::string kw,double * w){
-      locker.Rlock();
-      auto it=lst.find(kw);
-      bool res;
-      if(it==lst.end()){
-        res=false;
-      }else{
-        res=true;
-        *w=it->second;
-      }
-      locker.unlock();
-      return res;
-    }
-  };
-  class word2vec_base:public wlist{
+  class word2vec_base{
     //汉字转向量
-    //使用前请自己准备cppjieba字典
-    //还有足够的数据来训练思维球
-    //我这里可没有训练好的思维球模型啊（那玩意儿我没有(>_<)）
+    //使用前请自己准备足够的数据来训练ksphere
+    //我这里可没有训练好的模型啊（那玩意儿我没有(>_<)）
     bool cleanNum(std::string & wd){
       int i;
       auto s=wd.c_str();
@@ -104,12 +38,8 @@ namespace atulocher{
     }
     public:
     typedef octree::vec vec;
-    virtual void cut(const std::string & word,std::vector<std::string> & words)=0;
     ksphere ks;
-    word2vec_base(
-      const char * path,
-      const char * w
-    ):ks(path),wlist(w){
+    word2vec_base(const char * path):ks(path){
       
     }
     static size_t utf8_to_charset(const std::string &input,std::vector<std::string> &output){
@@ -149,21 +79,20 @@ namespace atulocher{
       memcpy(sbuf,v.c_str(),3500);
       ar.add(word,sbuf);
     }
-    inline void setWeighter(std::string s,double w){
-      //定义词语权重设置器
-      //可用于定义否定词，语气词等
-      //例：setWeighter("否",-1.0d);
-      wlist::set(s,w);
-    }
-    virtual octree::vec wordToVec(std::string word){
+    virtual octree::vec wordToVec(std::string word,double * arr=NULL,int arrs=0){
       if(word.empty())return octree::vec(0,0,0);
       auto p=ks.find(word.c_str());
-      if(p)return p->obj.position;  //有现成的，直接返回
+      if(p){
+        if(arr){
+          ks.toArray(arr,arrs,p);
+        }
+        return p->obj.position;  //有现成的，直接返回
+      }
       std::vector<std::string> words;
-      this->cut(word, words);
+      this->utf8_to_charset(word, words);
       double exp;
       if(words.size()==0)
-        return octree::vec(0,0,0);  //无法分词
+        return octree::vec(0,0,0);
       else
         exp=1.0d/(double)words.size();
       class PP{
@@ -185,28 +114,8 @@ namespace atulocher{
         pp.next();
         if(ar.mean(s,exp*pp.w)){
           //有，直接加入
-        }else{
-          //否则,尝试推测词语意思
-          std::vector<std::string> se;
-          utf8_to_charset(s,se);
-          double e;
-          if(se.size()==0)
-            continue;
-          else{
-            double wr=1.0d;
-            double wbuf;
-            e=1.0d/(double)se.size();
-            octree::vec S;
-            for(auto seg:se){
-              if(wlist::get(seg,&wbuf)){
-                wr*=wbuf;
-                continue;
-              }
-              auto kk=ks.find(seg);
-              if(kk)
-                S+=kk->obj.position*e;
-            }
-            ar.mean(S,exp*wr*pp.w);
+          if(arr){
+            ks.toArray(arr,arrs,s,exp*pp.w);
           }
         }
       }
@@ -230,11 +139,7 @@ namespace atulocher{
     }
   };
   class word2vec:public word2vec_base{
-    public:
-    cppjieba::Jieba * jieba;
-    virtual void cut(const std::string & word,std::vector<std::string> & words){
-      jieba->Cut(word,words);
-    }
+    
   };
 }
 #endif

@@ -489,25 +489,30 @@ namespace atulocher{
     static void vec2bin(const octree::vec & v,double * d,int l){
       v.GeoHashBin(10000000,d,l);
     }
-    void toArray(double * arr,int len,knowledge * kn){
+    inline void toArray(double * arr,int len,const std::string & kn,double imax=1,bool isc=false){
+      toArray(arr,len,getByKey(kn),imax,isc);
+    }
+    void toArray(double * arr,int len,knowledge * kn,double imax=1,bool isc=false){
       if(!kn)return;
-      for(int i=0;i<len;i++)arr[i]=0;
+      if(isc)
+        for(int i=0;i<len;i++)
+          arr[i]=0;
       locker.Rlock();
       for(auto it:kn->dep){
         int id=it.ptr->id;
         if(id>=len)continue;
-        arr[id]=it.w;
+        arr[id]+=it.w*imax;
       }
       locker.unlock();
     }
-    vec loadArray(const double * arr,int len,double min=0.5){
+    vec loadArray(const double * arr,int len,double imin=0.5){
       vec tmp(0,0,0);
       double s=0;
       locker.Rlock();
       for(int i=0;i<len;i++){
         
         if(i>=axionlist.size())break;
-        if(arr[i]<min)continue;
+        if(arr[i]<imin)continue;
         
         s+=arr[i];
         tmp+=axionlist[i]->obj.position*arr[i];
