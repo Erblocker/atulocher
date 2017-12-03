@@ -1,0 +1,10 @@
+*.bck
+*.o
+bin/*
+!bin/README
+lib/*
+!lib/README
+tmp/*
+src/test/main_tests
+src/debug/profile
+.DS_Store

@@ -31,8 +31,17 @@
 *.out
 *.app
 
+# Module file
 *.ann
 *.sph
 
-/crfpp*
 /data*
+
+# libpsyc
+/psyc/bin/*
+!/psyc/bin/README
+/psyc/lib/*
+!/psyc/lib/README
+/psyc/tmp/*
+/psyc/src/test/main_tests
+/psyc/src/debug/profile
