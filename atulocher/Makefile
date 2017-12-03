@@ -6,15 +6,11 @@ atulocher :utils.hpp.gch \
            graph.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
-           dectree.hpp.gch \
-           lstm.hpp.gch
+           dectree.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
 
 utils.hpp.gch : utils.hpp
 	g++ utils.hpp -std=c++0x -I  ../leveldb/include
-
-lstm.hpp.gch : lstm.hpp
-	g++ lstm.hpp -std=c++0x
 
 graph.hpp.gch : graph.hpp
 	g++ graph.hpp -std=c++0x
@@ -50,10 +46,10 @@ octree.hpp.gch : octree.hpp vec3.hpp.gch
 	g++ octree.hpp -std=c++0x
 
 language.hpp.gch : language.hpp word2vec.hpp.gch sentree.hpp.gch
-	g++ language.hpp -std=c++0x -I ../crfpp
+	g++ language.hpp -std=c++0x
 
 sentree.hpp.gch : sentree.hpp
-	g++ sentree.hpp -std=c++0x -I ../ -I ../crfpp
+	g++ sentree.hpp -std=c++0x -I ../ 
 
 ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch
 	g++ ksphere.hpp -std=c++0x

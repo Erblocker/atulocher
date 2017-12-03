@@ -5,14 +5,19 @@
 #include <string>
 #include <string.h>
 #include <map>
+#include <vector>
+#include <set>
 #include <math.h>
 #include <sstream>
 #include <iostream>
 #include <ctime>
 #include <stdio.h>
+#include <unistd.h>
+#include <sys/file.h>
+#include <ctype.h>
 /*
-* 知识球：
-** 一种用向量来学习并进行逻辑思维的方法
+* ksphere：
+** 一种用向量来学习的方法
 ** 因其空间布局为球形而得名
 */
 namespace atulocher{
@@ -24,28 +29,114 @@ namespace atulocher{
     struct knowledge{
       octree::object obj;         //在八叉树中的节点
       bool           isTrue;      //正确性
+      bool           isaxion;
+      unsigned int   id;
       std::string    key;
       std::string    description; //值
+      struct depend{
+        knowledge * ptr;
+        double w;
+        depend()=default;
+        depend(const depend&)=default;
+        depend(knowledge * p,double iw){
+          ptr=p;
+          w=iw;
+        }
+        bool operator>(const depend & d)const{
+          return ptr>d.ptr;
+        }
+        bool operator<(const depend & d)const{
+          return ptr<d.ptr;
+        }
+        bool operator==(const depend & d)const{
+          return ptr==d.ptr;
+        }
+      };
+      typedef std::set<depend> dependset;
+      dependset dep;
       knowledge(const std::string & k){
         key=k;
         isTrue=true;
+        isaxion=false;
         obj.value=this;
+        id=0;
         obj.onfree=[](octree::object * self){
           delete (knowledge*)(self->value);
         };
       }
     };
-    private:
+    public:
+    inline knowledge * getAxiByKey(const std::string & kk){
+      locker.Rlock();
+      knowledge * res;
+      auto resit=axion.find(kk);
+      if(resit==axion.end())
+        res=NULL;
+      else
+        res=resit->second;
+      locker.unlock();
+      return res;
+    }
+    inline knowledge * getByKey(const std::string & kk){
+      locker.Rlock();
+      knowledge * res;
+      auto resit=known.find(kk);
+      if(resit==known.end())
+        res=NULL;
+      else
+        res=resit->second;
+      locker.unlock();
+      return res;
+    }
+    inline void setDepend(knowledge * ob,const std::string & dk,double w){
+      if(ob==NULL)return;
+      auto r=getAxiByKey(dk);
+      if(r==NULL)return;
+      knowledge::depend td(r,w);
+      ob->dep.insert(td);
+    }
+    inline void setDepend(const std::string & k1,const std::string & k2,double w){
+      if(auto r1=getByKey(k1))
+        setDepend(r1,k2,w);
+    }
+    public:
+    std::map<std::string,knowledge*> axion;
     std::map<std::string,knowledge*> known;
-    FILE  * fd;
+    std::vector<knowledge*>          axionlist;
+    private:
+    int fd;
     bool readconfigline(const char * str){
       octree::vec posi;
       bool t;
       int tb;
-      std::string k;
+      std::string k,k1,k2;
+      double w;
       std::string v;
       if(strlen(str)<1)return false;
       std::istringstream iss(str+1);
+      if(str[0]=='a'){
+        iss>>k;
+        iss>>v;
+        iss>>posi.x;
+        iss>>posi.y;
+        iss>>posi.z;
+        iss>>tb;
+        t=(tb==1);
+        auto kn=new knowledge(k);
+        kn->obj.position=posi;
+        kn->description=v;
+        kn->isTrue=t;
+        if(oct.insert(&(kn->obj))){
+          known[k]=kn;
+          axion[k]=kn;
+          axionlist.push_back(kn);
+          kn->id=axionlist.size()-1;
+          kn->isaxion=true;
+        }else{
+          delete kn;
+        }
+        return true;
+      }else
       if(str[0]=='+'){
         iss>>k;
         iss>>v;
@@ -73,6 +164,13 @@ namespace atulocher{
         }
         it->second->isTrue=!(it->second->isTrue);
         return true;
+      }else
+      if(str[0]=='l'){
+        iss>>k1;
+        iss>>k2;
+        iss>>w;
+        setDepend(k1,k2,w);
+        return true;
       }
       return false;
     }
@@ -92,12 +190,39 @@ namespace atulocher{
         p.z,
         tb,time(0)
       );
-      fwrite(buf,strlen(buf),1,fd);
+      write(fd,buf,strlen(buf));
+    }
+    void writeconfaxi(
+      const std::string & k,
+      const std::string & v,
+      const octree::vec & p,bool t
+    ){
+      char buf[4096];
+      int tb;
+      t==1 ? tb=1 : tb=0;
+      snprintf(buf,4096,"a%s %s %f %f %f %d #time:%d\n",
+        k.c_str(),
+        v.c_str(),
+        p.x,
+        p.y,
+        p.z,
+        tb,time(0)
+      );
+      write(fd,buf,strlen(buf));
     }
     void writeconf(const std::string & k){
       char buf[4096];
       snprintf(buf,4096,"-%s #time:%d\n",k.c_str(),time(0));
-      fwrite(buf,strlen(buf),1,fd);
+      write(fd,buf,strlen(buf));
+    }
+    void writedep(const std::string & k1,const std::string & k2,double w){
+      char buf[4096];
+      snprintf(buf,4096,"l%s %s %f #\n",
+        k1.c_str(),
+        k2.c_str(),
+        w
+      );
+      write(fd,buf,strlen(buf));
     }
     void readconfig(const char * path){
       FILE * fp=NULL;
@@ -132,10 +257,10 @@ namespace atulocher{
     ){
       srand(time(0));
       readconfig(path);
-      fd=fopen(path,"a");
+      fd=open(path,O_WRONLY|O_CREAT|O_APPEND,0644);
     }
     ~ksphere(){
-      if(fd)fclose(fd);
+      if(fd!=-1)close(fd);
     }
     static double randn(){
       if(rand()>(RAND_MAX/2)){
@@ -149,6 +274,7 @@ namespace atulocher{
       int pn;
       public:
       octree::vec position;
+      std::map<knowledge*,double> dep;
       bool readonly;
       adder()=delete;
       adder(ksphere * k):position(0,0,0){
@@ -160,8 +286,10 @@ namespace atulocher{
       void mean(const octree::vec & p,double w){
         position+=p*w;//坐标乘以权重
       }
-      bool mean(const std::string & m,double w){//w取负数时表示否定
+      bool mean(const std::string & m,double w,bool limited=true){//w取负数时表示否定
         //总权重必须为1,否则点可能会在球外，引起死循环
+        if(w==0)return true;
+        knowledge * kkn;
         ks->locker.Rlock();
         auto it=ks->known.find(m);
         octree::vec * pt;
@@ -169,14 +297,32 @@ namespace atulocher{
           if(readonly){//只读
             ks->locker.unlock();
             return false;
+          }else
+          if(limited){
+            ks->locker.unlock();
+            return false;
+          }else{
+            
+            //如果没有
+            //记住，没有这个
+            octree::vec posi;
+          
+            ks->locker.unlock();//不然就是die
+            ks->addaxion(m,"unknow;",&posi,&kkn);
+            ks->locker.Rlock();
+          
+            pt=&posi;
+            dep[kkn]+=w;
           }
-          //如果没有
-          //记住，没有这个
-          octree::vec posi;
-          ks->addaxion(m,"unknow;",&posi);
-          pt=&posi;
         }else{
           pt=&it->second->obj.position;
+          kkn=it->second;
+          if(kkn->isaxion)
+            dep[kkn]+=w;
+          else{
+            for(auto ita:kkn->dep)
+              dep[ita.ptr]+=ita.w*w;
+          }
         }
         mean(*pt,w);
         pn++;
@@ -218,6 +364,8 @@ namespace atulocher{
           //注：对立命题连线中点当然在球心上
         //}
         auto kn=new knowledge(key);
+        for(auto itd:dep)
+          kn->dep.insert(knowledge::depend(itd.first,itd.second));
         kn->description=val;
         ins:
           auto p=position;
@@ -228,6 +376,9 @@ namespace atulocher{
         if(!(ks->oct.insert(&(kn->obj))))goto ins;
         ks->known[key]=kn;
         ks->writeconf(key,val,p,true);
+        for(auto itk:dep){
+          ks->writedep(key,itk.first->key,itk.second);
+        }
         ks->locker.unlock();
         return true;
       }
@@ -261,7 +412,7 @@ namespace atulocher{
         self->callback((knowledge*)(node->value),self->arg);
       },beg,end,&self,true,num);
     }
-    bool addaxion(const std::string & key,const std::string & value,octree::vec * posi=NULL){
+    bool addaxion(const std::string & key,const std::string & value,octree::vec * posi=NULL,knowledge ** okn=NULL){
       locker.Wlock();
       //添加一个基本命题（好像叫做公理）
       if(known[key]!=NULL){
@@ -270,6 +421,8 @@ namespace atulocher{
       }
       //创建节点，不解释
       auto kn=new knowledge(key);
+      kn->isaxion=true;
+      if(okn)*okn=kn;
       kn->description=value;
       struct of_t{
         int num;
@@ -300,8 +453,11 @@ namespace atulocher{
         
       kn->obj.position=p;
       known[key]=kn;
+      axion[key]=kn;
+      axionlist.push_back(kn);
+      kn->id=axionlist.size()-1;
       oct.insert(&(kn->obj));
-      writeconf(key,value,p,true);
+      writeconfaxi(key,value,p,true);
       locker.unlock();
       if(posi){
         *posi=p;
@@ -332,6 +488,35 @@ namespace atulocher{
     }
     static void vec2bin(const octree::vec & v,double * d,int l){
       v.GeoHashBin(10000000,d,l);
+    }
+    void toArray(double * arr,int len,knowledge * kn){
+      if(!kn)return;
+      for(int i=0;i<len;i++)arr[i]=0;
+      locker.Rlock();
+      for(auto it:kn->dep){
+        int id=it.ptr->id;
+        if(id>=len)continue;
+        arr[id]=it.w;
+      }
+      locker.unlock();
+    }
+    vec loadArray(const double * arr,int len,double min=0.5){
+      vec tmp(0,0,0);
+      double s=0;
+      locker.Rlock();
+      for(int i=0;i<len;i++){
+        
+        if(i>=axionlist.size())break;
+        if(arr[i]<min)continue;
+        
+        s+=arr[i];
+        tmp+=axionlist[i]->obj.position*arr[i];
+      }
+      locker.unlock();
+      if(s==0)
+        return vec(0,0,0);
+      else
+        return tmp/s;
     }
   };
 }
