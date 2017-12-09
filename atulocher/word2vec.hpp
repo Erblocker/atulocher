@@ -10,7 +10,7 @@ namespace atulocher{
     //使用前请自己准备足够的数据来训练ksphere
     //我这里可没有训练好的模型啊（那玩意儿我没有(>_<)）
     bool cleanNum(std::string & wd){
-      int i;
+      register int i;
       auto s=wd.c_str();
       bool r=false;
       for(i=0;s[i]!='\0';i++){
@@ -29,7 +29,7 @@ namespace atulocher{
       if(!cleanNum(w))return false;
       std::istringstream iss(w);
       octree::vec vv;
-      //for(nit i=0;i<4;i++){
+      //for(i=0;i<4;i++){
         iss>>vv.x;
         iss>>vv.y;
         iss>>vv.z;
@@ -44,7 +44,7 @@ namespace atulocher{
     }
     static size_t utf8_to_charset(const std::string &input,std::vector<std::string> &output){
       std::string ch; 
-      for (size_t i = 0, len = 0; i != input.length(); i += len) {
+      for (register size_t i = 0, len = 0; i != input.length(); i += len) {
         unsigned char byte = (unsigned)input[i];
         if (byte >= 0xFC) // lenght 6
           len = 6;  

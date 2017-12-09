@@ -1,10 +1,15 @@
-#ifndef atulocher_ttree
-#define atulocher_ttree
+#ifndef atulocher_tctree
+#define atulocher_tctree
 #include "mempool.hpp"
+#include <set>
 namespace atulocher{
   #define LENP1 (1.0/3.0)
   #define LENP2 (2.0/3.0)
-  class ttree{
+  class tctree{
+    public:
+    int minN;    //最小个数
+    double minS; //最小比值
+    std::set<double> tuples;
     private:
     //数据结构：三等分二叉树
     //用途：聚类
@@ -33,7 +38,7 @@ namespace atulocher{
            * next,
            * gc_next;
       value * v;
-      ttree * owner;
+      tctree * owner;
       int    deep,
              num;
       double begin,
@@ -55,6 +60,56 @@ namespace atulocher{
         auto buf=getRightBegin();
         return (n>buf && n<buf+getChildLen());
       }
+      void getTuple(bool intup=false){
+        if(this->num<owner->minN && (!intup))
+          return;
+        getLeftTuple(intup);
+        getRightTuple(intup);
+      }
+      #define gettp(LW,RW,pre) \
+        if(!LW)return;\
+        if(LW->v){\
+          if(intup)owner->tuples.insert(LW->v->position);\
+          return;\
+        }\
+        if(LW->num==0)\
+          return;\
+        else{\
+          if(!intup){\
+            if(RW && RW->v==NULL){\
+              if(RW->num==0)\
+                LW->getTuple(true);\
+              else\
+              if((((double)LW->num)/((double)RW->num))>owner->minS)\
+                LW->getTuple(true);\
+              else\
+                LW->getTuple(false);\
+            }else{\
+              LW->getTuple(intup);\
+            }\
+          }else{\
+            if(LW){\
+              if(RW){\
+                if(RW->num==LW->num){\
+                  if(pre)\
+                    LW->getTuple(true);\
+                }else\
+                if(RW->num>LW->num)\
+                  RW->getTuple(true);\
+                else\
+                  LW->getTuple(true);\
+              }else\
+                LW->getTuple(true);\
+            }\
+          }\
+        }
+      void getLeftTuple(bool intup){
+        gettp(left,right,true);
+      }
+      void getRightTuple(bool intup){
+        gettp(right,left,false);
+      }
+      #undef gettp
     };
     mempool_auto<node>  npool;
     mempool_auto<value> vpool;//自动管理内存
@@ -66,10 +121,12 @@ namespace atulocher{
       return p;
     }
     public:
-    ttree(double from,double l){
+    tctree(double from,double l){
       root=getn();
       root->begin=from;
       root->len=l;
+      minN=5;
+      minS=0.5;
     }
     private:
     void create_left(node * n){

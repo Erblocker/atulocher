@@ -495,7 +495,7 @@ namespace atulocher{
     void toArray(double * arr,int len,knowledge * kn,double imax=1,bool isc=false){
       if(!kn)return;
       if(isc)
-        for(int i=0;i<len;i++)
+        for(register int i=0;i<len;i++)
           arr[i]=0;
       locker.Rlock();
       for(auto it:kn->dep){
@@ -509,7 +509,7 @@ namespace atulocher{
       vec tmp(0,0,0);
       double s=0;
       locker.Rlock();
-      for(int i=0;i<len;i++){
+      for(register int i=0;i<len;i++){
         
         if(i>=axionlist.size())break;
         if(arr[i]<imin)continue;
