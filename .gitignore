@@ -30,6 +30,7 @@
 *.exe
 *.out
 *.app
+*.atum
 
 # Module file
 *.ann

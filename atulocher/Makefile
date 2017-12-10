@@ -7,15 +7,11 @@ atulocher :utils.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
            dectree.hpp.gch \
-           rpc.hpp.gch \
            tctree.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
 
 tctree.hpp.gch : tctree.hpp
 	g++ tctree.hpp -std=c++0x
-
-rpc.hpp.gch : rpc.hpp
-	g++ rpc.hpp -std=c++0x
 
 utils.hpp.gch : utils.hpp
 	g++ utils.hpp -std=c++0x -I  ../leveldb/include
