@@ -1,8 +1,8 @@
 #include <atulocher/dmsg.hpp>
 using namespace atulocher;
-class Msg:public Dmsg_queue{
-  virtual void onGetMessage(node * p,int fd){
-    printf("%s\n",p->data);
+class Msg:public Dmsg_server{
+  virtual void onGetMessage(node * p,int fd,int sessid){
+    printf("%s %d\n",p->data,sessid);
   }
 }msg;
 int main(){
