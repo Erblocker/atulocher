@@ -11,11 +11,13 @@
 #include <leveldb/db.h>
 #include <leveldb/write_batch.h>
 #include <unistd.h>
+#include <exception>
 #include "utils.hpp"
 #include "mempool.hpp"
 namespace atulocher{
   namespace dectree{
     using namespace std;
+    class NodeExist:public std::exception{};
     //匹配前缀
     //s1:前缀
     //s2:字符串
@@ -102,20 +104,19 @@ namespace atulocher{
       virtual void think(const char * ks,set<probinfo> & pis,int num,int * i)=0;
       virtual void addIntoRememberBuffer(const string & s1,const string & s2,const probinfo & pp)=0;
       
-      virtual void print(list<string> & res,info * t,int maxsearchdeep=32){
+      virtual void printTree(list<string> & res,info * t,int maxsearchdeep=32){
         if(maxsearchdeep<0)return;
         res.push_front(t->answer);
         for(auto it:t->depend)
-          this->print(res,it,maxsearchdeep-1);
+          this->printTree(res,it,maxsearchdeep-1);
       }
-      virtual void print(list<string> & res){
+      virtual void printTree(list<string> & res){
         for(auto it:want){
           auto p=known.find(it);
           if(p!=known.end()){
-            this->print(res,p->second);
+            this->printTree(res,p->second);
           }
         }
-        
       }
       virtual void learnOne(const keyname &kl){
         if(!logEvent(kl))
@@ -158,6 +159,10 @@ namespace atulocher{
           return NULL;
       }
       virtual void addknown(string name,string answer,string res,const set<string> & depend){
+        if((known.find(name))!=known.end()){
+          throw NodeExist();
+          return;
+        }
         auto p=gc.get();
         p->name=name;
         p->answer=answer;

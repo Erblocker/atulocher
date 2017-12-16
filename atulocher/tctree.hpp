@@ -2,6 +2,9 @@
 #define atulocher_tctree
 #include "mempool.hpp"
 #include <set>
+#include <vector>
+#include <math.h>
+#include <list>
 namespace atulocher{
   #define LENP1 (1.0/3.0)
   #define LENP2 (2.0/3.0)
@@ -177,7 +180,6 @@ namespace atulocher{
       insert_node(pt,root);
     }
   };
-  class ktctree{};
   #undef LENP1
   #undef LENP2
 }

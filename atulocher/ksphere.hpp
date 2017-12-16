@@ -492,7 +492,8 @@ namespace atulocher{
     inline void toArray(double * arr,int len,const std::string & kn,double imax=1,bool isc=false){
       toArray(arr,len,getByKey(kn),imax,isc);
     }
-    void toArray(double * arr,int len,knowledge * kn,double imax=1,bool isc=false){
+    template<class T=double>
+    void toArray(T * arr,int len,knowledge * kn,double imax=1,bool isc=false){
       if(!kn)return;
       if(isc)
         for(register int i=0;i<len;i++)
@@ -505,7 +506,8 @@ namespace atulocher{
       }
       locker.unlock();
     }
-    vec loadArray(const double * arr,int len,double imin=0.5){
+    template<class T=double>
+    vec loadArray(const T * arr,int len,double imin=0.5){
       vec tmp(0,0,0);
       double s=0;
       locker.Rlock();

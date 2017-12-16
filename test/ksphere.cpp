@@ -51,11 +51,14 @@ int main(){
   },1000,NULL);
   
   double bin[16];
-  ksphere::vec2bin(posi,bin,16);
+  for(int i=0;i<16;i++){
+    bin[i]=0;
+  }
+  kn.toArray(bin,16,kn.known["test2"]);
   //如果你需要使用二进制的数据，调用vec2bin就行了
   printf("bin:");
   for(int i=0;i<16;i++){
-    printf("%d",(int)(bin[i]));
+    printf("%f,",(bin[i]));
   }
   printf("\n");
   for(auto it : kn.axionlist)

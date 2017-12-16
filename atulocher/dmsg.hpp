@@ -173,6 +173,7 @@ namespace atulocher{
       return send(fd,d->data,4096,0);
     }
   };
+  typedef Dmsg_client_base::node Dmsg_node;
   class Dmsg_client:public Dmsg_client_base{
     public:
     int sockfd;
@@ -210,6 +211,7 @@ namespace atulocher{
     };
     std::atomic<int> session;
     std::map<int,conn*> conns;
+    std::map<int,int>   sessions;
     struct status{
       status * next;
       int fd;
@@ -236,6 +238,8 @@ namespace atulocher{
         cp=it->second;
       }
       cp->sessionid=session;
+      sessions[cp->sessionid]=connfd;
+      onLogin(cp->sessionid);
       session++;
       for(auto nnp:cp->waitforsend)
         npool.del(nnp);
@@ -316,6 +320,14 @@ namespace atulocher{
     virtual void onQuit(int connfd){
       auto it=conns.find(connfd);
       if(it==conns.end())return;
+      
+      auto sit=sessions.find(it->second->sessionid);
+      if(sit!=sessions.end()){
+        
+        onLogout(it->second->sessionid);
+        sessions.erase(sit);
+      }
+      
       removeConn(it->second);
       conns.erase(it);
     }
@@ -343,7 +355,11 @@ namespace atulocher{
     virtual void loop(){
       std::pair<node*,int> buf;
       while(cy.pop_noblock(&buf)){
-        int connfd=buf.second;
+      
+        auto sit=sessions.find(buf.second);
+        if(sit==sessions.end())continue;
+        
+        int connfd=sit->second;
         auto it=conns.find(connfd);
         conn * cp;
         if(it==conns.end())continue;
@@ -359,19 +375,21 @@ namespace atulocher{
       }
     }
     public:
-    virtual void onSendMsg(node * d,int connfd){
+    virtual void sendMsg(node * d,int sessid){
       node * bd=npool.get();
       memcpy(bd->data,(const char*)d->data,4096);
       bd->len=4096;
       std::pair<node*,int> buf;
       buf.first=bd;
-      buf.second=connfd;
+      buf.second=sessid;
       cy.push(buf);
     }
     inline void delnode(node * p){
       npool.del(p);
     }
     virtual void onGetMessage(node * p,int fd,int sessionid)=0;
+    virtual void onLogin(int){}
+    virtual void onLogout(int){}
   };
 }
 #endif

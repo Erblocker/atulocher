@@ -79,7 +79,21 @@ namespace atulocher{
       memcpy(sbuf,v.c_str(),3500);
       ar.add(word,sbuf);
     }
-    virtual octree::vec wordToVec(std::string word,double * arr=NULL,int arrs=0){
+    void sentToArr(const std::vector<std::string> & sent,std::list<std::vector<double> > & vs,int k){
+      auto vbuf=new double[k];
+      for(auto it:sent){
+        for(int i=0;i<k;i++)
+          vbuf[i]=0;
+        wordToVec(it,vbuf,k);
+        std::vector<double> v(k);
+        for(int i=0;i<k;i++)
+          v[i]=vbuf[i];
+        vs.push_back(v);
+      }
+      delete [] vbuf;
+    }
+    template<class T=double>
+    octree::vec wordToVec(std::string word,T * arr=NULL,int arrs=0){
       if(word.empty())return octree::vec(0,0,0);
       auto p=ks.find(word.c_str());
       if(p){

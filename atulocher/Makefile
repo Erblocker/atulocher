@@ -6,8 +6,8 @@ atulocher :utils.hpp.gch \
            graph.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
-           dectree.hpp.gch \
            tctree.hpp.gch \
+           ktctree.hpp.gch \
            dmsg.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
 
@@ -19,6 +19,9 @@ cyqueue.hpp.gch : cyqueue.hpp
 
 tctree.hpp.gch : tctree.hpp
 	g++ tctree.hpp -std=c++0x
+
+ktctree.hpp.gch : ktctree.hpp
+	g++ ktctree.hpp -std=c++0x
 
 utils.hpp.gch : utils.hpp
 	g++ utils.hpp -std=c++0x -I  ../leveldb/include
@@ -41,8 +44,8 @@ kmeans.hpp.gch : kmeans.hpp
 GPU.hpp.gch : GPU.hpp
 	g++ GPU.hpp -std=c++0x
 
-active.hpp.gch : active.hpp bayes.hpp.gch
-	g++ active.hpp -std=c++0x
+active.hpp.gch : active.hpp bayes.hpp.gch dectree.hpp.gch
+	g++ active.hpp -std=c++0x -I  ../leveldb/include
 
 bayes.hpp.gch : bayes.hpp
 	g++ bayes.hpp -std=c++0x
