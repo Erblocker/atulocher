@@ -26,6 +26,7 @@
 #include "threadpool.hpp"
 #include "mempool.hpp"
 #include "rwmutex.hpp"
+#include "cyqueue.hpp"
 namespace atulocher{
   class Dmsg_base{
     public:
@@ -98,7 +99,7 @@ namespace atulocher{
       while (running){
         
         int nfds = epoll_wait(epfd, events, 20, 4000);
-        
+        loop();
         for(int i = 0; i < nfds; ++i) {
           if(events[i].data.fd == listenfd) {
             
@@ -118,8 +119,9 @@ namespace atulocher{
           }else if(events[i].events & EPOLLIN) {
             if((connfd = events[i].data.fd) < 0) continue;
             //处理请求
-            char cbuf;
-            if((read(connfd, &cbuf, 1)) <= 0) {
+            char cbuf[4096];
+            int len;
+            if((len=read(connfd, cbuf, 4096)) <= 0) {
               
               onQuit(connfd);
               ev.data.fd = connfd;
@@ -129,7 +131,7 @@ namespace atulocher{
             }else{
               
               //printf("msg\n");
-              onMessage(connfd,cbuf);
+              onMessage(connfd,cbuf,len);
               
               ev.data.fd = connfd;
               ev.events = EPOLLIN | EPOLLHUP;
@@ -153,11 +155,12 @@ namespace atulocher{
       destruct();
       return;
     }
-    virtual void onMessage(int,char){}
+    virtual void onMessage(int,char*,int){}
     virtual void onConnect(int){}
     virtual void onQuit(int){}
     virtual void onWriAble(int){}
     virtual void destruct(){}
+    virtual void loop(){}
   };
   class Dmsg_client_base{
     public:
@@ -195,7 +198,10 @@ namespace atulocher{
     }
   };
   class Dmsg_server:public Dmsg_base,public Dmsg_client_base{
+    public:
+    Dmsg_server(int cyl=256):cy(cyl){}
     private:
+    cyqueue<std::pair<node*,int> > cy;
     struct conn{
       conn * next;
       node * data;
@@ -248,59 +254,59 @@ namespace atulocher{
     }
     inline void charAppend(conn * cp,char ch,int connfd){
       auto p=cp->data;
-      if(p->len>=4096){
-        cp->data=npool.get();
-        cp->data->len=0;
-        
-        auto sp=spool.get();
-        sp->self=this;
-        sp->fd=connfd;
-        sp->data=p;
-        sp->sessionid=cp->sessionid;
-        
-        threadpool::add(accreq,sp);
-        
-        return;
-      }
-      
+      checkbuf(cp,connfd);
       p->data[p->len]=ch;
       p->len++;
       return;
     }
-    inline bool connAppend(conn * cp,int connfd){
+    inline void checkbuf(conn * cp,int connfd){
       auto p=cp->data;
       if(p->len>=4096){
         cp->data=npool.get();
         cp->data->len=0;
-        
         auto sp=spool.get();
         sp->self=this;
         sp->fd=connfd;
         sp->data=p;
         sp->sessionid=cp->sessionid;
-        
         threadpool::add(accreq,sp);
-        
-        return false;
       }
-      
+    }
+    inline bool connAppend(conn * cp,int connfd){
+      auto p=cp->data;
+      checkbuf(cp,connfd);
       char buf;
       if(read(connfd,&buf,1)<=0)return true;
       p->data[p->len]=buf;
       p->len++;
       return false;
     }
-    virtual void onMessage(int connfd,char fst){
+    virtual void onMessage(int connfd,char * fst,int len){
       auto it=conns.find(connfd);
       conn * cp;
       if(it==conns.end())return;
       cp=it->second;
+      
       if(cp->data==NULL)
         cleanConn(cp);
-      charAppend(cp,fst,connfd);
+      else
+        checkbuf(cp,connfd);
+      
+      for(int j=0;j<len;j++)
+        charAppend(cp,fst[j],connfd);
+      
+      checkbuf(cp,connfd);
+      
       while(1){
-        if(connAppend(cp,connfd))return;
+        char buf[4096];
+        int slen=read(connfd,buf,4096);
+        if(slen<=0)return;
+        for(int j=0;j<slen;j++)
+          charAppend(cp,buf[j],connfd);
+        checkbuf(cp,connfd);
+        if(slen<4096)return;
       }
+      
     }
     virtual void onConnect(int connfd){
       resetConn(connfd);
@@ -332,23 +338,34 @@ namespace atulocher{
       ev.events = EPOLLIN | EPOLLHUP;
       epoll_ctl(epfd, EPOLL_CTL_MOD, connfd, &ev);
     }
-    public:
-    void sendMsg(node * d,int connfd){
-      auto it=conns.find(connfd);
-      conn * cp;
-      if(it==conns.end())return;
-      cp=it->second;
-      node * bd=npool.get();
-      memcpy(bd->data,d->data,4096);
-      bd->len=4096;
-      cp->waitforsend.push_back(bd);
+    virtual void loop(){
+      std::pair<node*,int> buf;
+      while(cy.pop_noblock(&buf)){
+        int connfd=buf.second;
+        auto it=conns.find(connfd);
+        conn * cp;
+        if(it==conns.end())return;
+        cp=it->second;
+        node * bd=buf.first;
+        bd->len=4096;
+        cp->waitforsend.push_back(bd);
       
-      epoll_event ev;
-      ev.data.fd = connfd;
-      ev.events = EPOLLIN | EPOLLHUP | EPOLLOUT;
-      epoll_ctl(epfd, EPOLL_CTL_MOD, connfd, &ev);
+        epoll_event ev;
+        ev.data.fd = connfd;
+        ev.events = EPOLLIN | EPOLLHUP | EPOLLOUT;
+        epoll_ctl(epfd, EPOLL_CTL_MOD, connfd, &ev);
+      }
     }
     public:
+    virtual void onSendMsg(node * d,int connfd){
+      node * bd=npool.get();
+      memcpy(bd->data,(const char*)d->data,4096);
+      bd->len=4096;
+      std::pair<node*,int> buf;
+      buf.first=bd;
+      buf.second=connfd;
+      cy.push(buf);
+    }
     inline void delnode(node * p){
       npool.del(p);
     }

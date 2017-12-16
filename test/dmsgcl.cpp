@@ -8,4 +8,5 @@ int main(){
   cl.sendMsg(&d);
   sleep(5);
   cl.sendMsg(&d);
+  cl.sendMsg(&d);
 }
