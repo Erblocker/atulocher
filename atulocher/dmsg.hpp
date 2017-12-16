@@ -237,6 +237,8 @@ namespace atulocher{
       }
       cp->sessionid=session;
       session++;
+      for(auto nnp:cp->waitforsend)
+        npool.del(nnp);
       cp->waitforsend.clear();
       cleanConn(cp);
     }
