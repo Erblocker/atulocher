@@ -201,7 +201,7 @@ namespace atulocher{
     public:
     Dmsg_server(int cyl=256):cy(cyl){}
     private:
-    cyqueue<std::pair<node*,int> > cy;
+    cyqueue<std::pair<node*,int> > cy;//环形缓冲区
     struct conn{
       conn * next;
       node * data;
@@ -344,7 +344,7 @@ namespace atulocher{
         int connfd=buf.second;
         auto it=conns.find(connfd);
         conn * cp;
-        if(it==conns.end())return;
+        if(it==conns.end())continue;
         cp=it->second;
         node * bd=buf.first;
         bd->len=4096;

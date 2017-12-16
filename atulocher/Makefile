@@ -7,8 +7,15 @@ atulocher :utils.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
            dectree.hpp.gch \
-           tctree.hpp.gch
+           tctree.hpp.gch \
+           dmsg.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
+
+dmsg.hpp.gch : dmsg.hpp cyqueue.hpp.gch
+	g++ dmsg.hpp -std=c++0x
+
+cyqueue.hpp.gch : cyqueue.hpp
+	g++ cyqueue.hpp -std=c++0x
 
 tctree.hpp.gch : tctree.hpp
 	g++ tctree.hpp -std=c++0x

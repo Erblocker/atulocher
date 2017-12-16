@@ -7,7 +7,7 @@ atulocher，读作/ætʌlɔ:'kər/，为auto-launcher重组的单词。意为“
 * 神经网络  
 * 中文转向量  
 * 逻辑推理  
-#依赖包：  
+## 依赖包：  
 * crfpp  
 * openBLAS  
 * gcc(>=4.8)  

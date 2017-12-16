@@ -33,7 +33,6 @@ namespace atulocher{
       return true;
     }
     public:
-    
     void push(T v){
       std::unique_lock<std::mutex> lck(mtx);
       while(1){
@@ -68,7 +67,6 @@ namespace atulocher{
       wcv.notify_all();
       return r;
     }
-    
     cyqueue(int len){
       if(len<4)return;
       length=len;
