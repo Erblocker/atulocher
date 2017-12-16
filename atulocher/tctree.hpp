@@ -177,6 +177,7 @@ namespace atulocher{
       insert_node(pt,root);
     }
   };
+  class ktctree{};
   #undef LENP1
   #undef LENP2
 }
