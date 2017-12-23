@@ -1,5 +1,5 @@
-#ifndef atulocher_tctree
-#define atulocher_tctree
+#ifndef atulocher_ktctree
+#define atulocher_ktctree
 #include "mempool.hpp"
 #include <set>
 #include <vector>
@@ -110,7 +110,7 @@ namespace atulocher{
           if(right)right->find(callback,beg,end,arg,issort,ud);
         }
       }
-      inline double getDiv(int ik){
+      inline double getDiv(){
         return position[k]+(len[k]/2);
       }
       inline int getNextK(){
@@ -137,6 +137,7 @@ namespace atulocher{
       private:
       inline node * createNode(){
         auto p=owner->getn();
+        p->parent=this;
         return p;
       }
       inline void createLeft(){

@@ -8,6 +8,7 @@ atulocher :utils.hpp.gch \
            active.hpp.gch \
            tctree.hpp.gch \
            ktctree.hpp.gch \
+           kbtree.hpp.gch \
            dmsg.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
 
@@ -22,6 +23,9 @@ tctree.hpp.gch : tctree.hpp
 
 ktctree.hpp.gch : ktctree.hpp
 	g++ ktctree.hpp -std=c++0x
+
+kbtree.hpp.gch : kbtree.hpp
+	g++ kbtree.hpp -std=c++0x
 
 utils.hpp.gch : utils.hpp
 	g++ utils.hpp -std=c++0x -I  ../leveldb/include
