@@ -5,7 +5,36 @@
 #include <vector>
 #include <map>
 namespace atulocher{
-  class word2vec_base{
+  class word2vec{
+    public:
+    virtual void learn(
+      std::string & word,
+      const std::list< std::pair<std::string,double> > & mean
+    )=0;
+    static size_t utf8_to_charset(const std::string &input,std::vector<std::string> &output){
+      std::string ch; 
+      for (register size_t i = 0, len = 0; i != input.length(); i += len) {
+        unsigned char byte = (unsigned)input[i];
+        if (byte >= 0xFC) // lenght 6
+          len = 6;  
+        else if (byte >= 0xF8)
+          len = 5;
+        else if (byte >= 0xF0)
+         len = 4;
+        else if (byte >= 0xE0)
+         len = 3;
+        else if (byte >= 0xC0)
+         len = 2;
+        else
+         len = 1;
+        ch = input.substr(i, len);
+        output.push_back(ch);
+      }
+      return output.size();
+    }
+    virtual void sentToArr(const std::vector<std::string> & sent,std::list<std::vector<double> > & vs,int k)=0;
+  };
+  class word2vec_ksphere:public word2vec{
     //汉字转向量
     //使用前请自己准备足够的数据来训练ksphere
     //我这里可没有训练好的模型啊（那玩意儿我没有(>_<)）
@@ -39,29 +68,8 @@ namespace atulocher{
     public:
     typedef octree::vec vec;
     ksphere ks;
-    word2vec_base(const char * path):ks(path){
+    word2vec_ksphere(const char * path):ks(path){
       
-    }
-    static size_t utf8_to_charset(const std::string &input,std::vector<std::string> &output){
-      std::string ch; 
-      for (register size_t i = 0, len = 0; i != input.length(); i += len) {
-        unsigned char byte = (unsigned)input[i];
-        if (byte >= 0xFC) // lenght 6
-          len = 6;  
-        else if (byte >= 0xF8)
-          len = 5;
-        else if (byte >= 0xF0)
-         len = 4;
-        else if (byte >= 0xE0)
-         len = 3;
-        else if (byte >= 0xC0)
-         len = 2;
-        else
-         len = 1;
-        ch = input.substr(i, len);
-        output.push_back(ch);
-      }
-      return output.size();
     }
     virtual void learn(
       std::string & word,
@@ -79,7 +87,7 @@ namespace atulocher{
       memcpy(sbuf,v.c_str(),3500);
       ar.add(word,sbuf);
     }
-    void sentToArr(const std::vector<std::string> & sent,std::list<std::vector<double> > & vs,int k){
+    virtual void sentToArr(const std::vector<std::string> & sent,std::list<std::vector<double> > & vs,int k){
       auto vbuf=new double[k];
       for(auto it:sent){
         for(int i=0;i<k;i++)
@@ -151,9 +159,6 @@ namespace atulocher{
         self->callback(ks->key,ks->obj.position,self->arg);
       },range,&self);
     }
-  };
-  class word2vec:public word2vec_base{
-    
   };
 }
 #endif

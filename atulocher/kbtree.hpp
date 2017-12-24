@@ -58,7 +58,7 @@ namespace atulocher{
       int    deep,k;
       vec    position,
              len;
-      void find(void(*callback)(value*,void*),const vec & beg,const vec & end,void * arg,bool issort)const{
+      void find(void(*callback)(value*,void*),const vec & beg,const vec & end,void * arg,bool issort=true)const{
         vec pend=position;
         for(int i=0;i<owner->k;i++)
           pend[i]+=len[i];
@@ -157,7 +157,8 @@ namespace atulocher{
           this->insert(pp,maxdeep);
         }
         double dv=getDiv();
-        if(pv->position[k]>dv){//in left
+        if((pv->position[k])<dv){//in left
+          //printf("left: div:%f,posi:%f\n",dv,pv->position[k]);
           if(left){
             left->insert(pv,maxdeep-1);
           }else{
@@ -165,6 +166,7 @@ namespace atulocher{
             left->v=pv;
           }
         }else{//in right
+          //printf("right:div:%f,posi:%f\n",dv,pv->position[k]);
           if(right){
             right->insert(pv,maxdeep-1);
           }else{
@@ -199,7 +201,7 @@ namespace atulocher{
       pp->position.resize(k);
       return pp;
     }
-    inline void insert(value * pv,int maxdeep){
+    inline void insert(value * pv,int maxdeep=128){
       root->insert(pv,maxdeep);
     }
   };
