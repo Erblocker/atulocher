@@ -4,13 +4,10 @@
 #include <list>
 #include <vector>
 #include <map>
+#include "kbtree.hpp"
 namespace atulocher{
   class word2vec{
     public:
-    virtual void learn(
-      std::string & word,
-      const std::list< std::pair<std::string,double> > & mean
-    )=0;
     static size_t utf8_to_charset(const std::string &input,std::vector<std::string> &output){
       std::string ch; 
       for (register size_t i = 0, len = 0; i != input.length(); i += len) {
@@ -33,6 +30,42 @@ namespace atulocher{
       return output.size();
     }
     virtual void sentToArr(const std::vector<std::string> & sent,std::list<std::vector<double> > & vs,int k)=0;
+  };
+  class word2vec_kbt:public word2vec{
+    public:
+    typedef kbtree::vec vec;
+    kbtree kbt;
+    int k;
+    std::map<std::string,vec> words;
+    word2vec_kbt(int kk):kbt(kk){
+      this->k=k;
+    }
+    inline void setzero(vec & v){
+      for(int i=0;i<v.size();i++){
+        v[i]=0;
+      }
+    }
+    inline void addvec(vec & out,const vec & in)const{
+      for(int i=0;i<k;i++){
+        out[i]+=in[k];
+      }
+    }
+    void wordToVec(const std::string & wd,vec & out){
+      auto it=words.find(wd);
+      if(it!=words.end()){
+        out=it->second;
+        return;
+      }
+      std::vector<std::string> wds;
+      this->utf8_to_charset(wd, wds);
+      setzero(out);
+      if(wds.size()==0)return;
+      for(auto wit:wds){
+        auto sit=words.find(wit);
+        if(sit!=words.end())
+          addvec(out,sit->second);
+      }
+    }
   };
   class word2vec_ksphere:public word2vec{
     //汉字转向量

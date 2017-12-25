@@ -26,12 +26,14 @@ namespace atulocher{
       return true;
     }
     int k;
+    class node;
     class value{
       public:
       vec position;
       void  * data;
       value * next,
             * gc_next;
+      node  * parent;
     };
     class node{
       public:
@@ -51,8 +53,7 @@ namespace atulocher{
       node * left,
            * right,
            * parent,
-           * next,
-           * gc_next;
+           * next;
       value * v;
       kbtree * owner;
       int    deep,k;
@@ -64,6 +65,10 @@ namespace atulocher{
           pend[i]+=len[i];
         if(!AABB(position,pend,beg,end,owner->k))return;
         if(v){
+          for(int j=0;j<owner->k;j++){
+            if(beg[j]>(v->position[j]))return;
+            if(end[j]<(v->position[j]))return;
+          }
           callback(v,arg);
           return;
         }
@@ -149,6 +154,30 @@ namespace atulocher{
         right->deep=deep+1;
         right->k=getNextK();
       }
+      void autoclean(){
+        if(v)      return;
+        if(left)   return;
+        if(right)  return;
+        if(!parent)return;
+        node * pp;
+        if(parent->left==this){
+          
+          pp=parent;
+          pp->left=NULL;
+          owner->deln(this);
+          pp->autoclean();//this have been deleted
+          
+        }else
+        if(parent->right==this){
+          
+          pp=parent;
+          pp->right=NULL;
+          owner->deln(this);
+          pp->autoclean();//this have been deleted
+          
+        }else
+        return;
+      }
       void insert(value * pv,int maxdeep){
         if(maxdeep<=0)return;
         if(this->v){
@@ -164,6 +193,7 @@ namespace atulocher{
           }else{
             createLeft();
             left->v=pv;
+            pv->parent=left;
           }
         }else{//in right
           //printf("right:div:%f,posi:%f\n",dv,pv->position[k]);
@@ -172,24 +202,49 @@ namespace atulocher{
           }else{
             createRight();
             right->v=pv;
+            pv->parent=right;
           }
         }
       }
     };
     private:
-    mempool_auto<node>  npool;
+    mempool<node>       npool;
     mempool_auto<value> vpool;//自动管理内存
     public:
     kbtree(const vec & from,const vec & l,int k){
+      init(from,l,k);
+    }
+    kbtree(int k){
+      vec from(k),l(k);
+      for(int i=0;i<k;i++){
+        from[i]=0;
+        l[i]=1;
+      }
+      init(from,l,k);
+    }
+    inline void init(const vec & from,const vec & l,int k){
       this->k=k;
       root=getn();
       root->position=from;
       root->len=l;
     }
+    ~kbtree(){
+      if(root)cleanNode(root);
+      root=NULL;
+    }
     public:
     node * root;
     private:
-    node * getn(){
+    void cleanNode(node * n){
+      if(!n)return;
+      if(n->left) cleanNode(n->left);
+      if(n->right)cleanNode(n->right);
+      deln(n);
+    }
+    inline void deln(node * n){
+      npool.del(n);
+    }
+    inline node * getn(){
       auto p=npool.get();
       p->owner=this;
       p->construct();
@@ -203,6 +258,12 @@ namespace atulocher{
     }
     inline void insert(value * pv,int maxdeep=128){
       root->insert(pv,maxdeep);
+    }
+    inline void erase(value * pv){
+      if(!pv)return;
+      if(pv->parent==NULL)return;
+      pv->parent->v=NULL;
+      pv->parent->autoclean();
     }
   };
 }

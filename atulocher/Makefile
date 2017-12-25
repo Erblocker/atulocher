@@ -31,7 +31,7 @@ utils.hpp.gch : utils.hpp
 	g++ utils.hpp -std=c++0x -I  ../leveldb/include
 
 graph.hpp.gch : graph.hpp
-	g++ graph.hpp -std=c++0x
+	g++ graph.hpp -std=c++0x -I  ../leveldb/include
 
 matht.hpp.gch : matht.hpp
 	g++ matht.hpp -std=c++0x
