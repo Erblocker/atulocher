@@ -28,10 +28,10 @@ namespace atulocher{
       for(auto it:kw){
         kws.push_back(it.word);
       }
-      paser->sentToArr(kws,keyword,k);
+      paser->sentToArr(kws,keyword);
       
       cutter->Cut(w,wds);
-      paser->sentToArr(wds,sent,k);
+      paser->sentToArr(wds,sent);
       
       getkeymeans();
     }

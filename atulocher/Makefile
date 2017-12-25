@@ -9,6 +9,7 @@ atulocher :utils.hpp.gch \
            tctree.hpp.gch \
            ktctree.hpp.gch \
            kbtree.hpp.gch \
+           triemap.hpp.gch \
            dmsg.hpp.gch
 	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
 
@@ -17,6 +18,9 @@ dmsg.hpp.gch : dmsg.hpp cyqueue.hpp.gch
 
 cyqueue.hpp.gch : cyqueue.hpp
 	g++ cyqueue.hpp -std=c++0x
+
+triemap.hpp.gch : triemap.hpp
+	g++ triemap.hpp -std=c++0x
 
 tctree.hpp.gch : tctree.hpp
 	g++ tctree.hpp -std=c++0x

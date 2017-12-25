@@ -59,19 +59,26 @@ namespace atulocher{
       int    deep,k;
       vec    position,
              len;
-      void find(void(*callback)(value*,void*),const vec & beg,const vec & end,void * arg,bool issort=true)const{
+      void find(void(*callback)(value*,void*),const vec & beg,const vec & end,void * arg,bool issort=true,int mnum=-1)const{
+        int maxnum=mnum;
+        this->find(callback,beg,end,arg,issort,&maxnum);
+      }
+      void find(void(*callback)(value*,void*),const vec & beg,const vec & end,void * arg,bool issort,int * maxnum)const{
         vec pend=position;
         for(int i=0;i<owner->k;i++)
           pend[i]+=len[i];
         if(!AABB(position,pend,beg,end,owner->k))return;
+        if((*maxnum)==0)return;
         if(v){
           for(int j=0;j<owner->k;j++){
             if(beg[j]>(v->position[j]))return;
             if(end[j]<(v->position[j]))return;
           }
+          (*maxnum)--;
           callback(v,arg);
           return;
         }
+        if((*maxnum)==0)return;
         if(left!=NULL && right!=NULL){
           auto c1=left;
           auto c2=right;
@@ -264,6 +271,9 @@ namespace atulocher{
       if(pv->parent==NULL)return;
       pv->parent->v=NULL;
       pv->parent->autoclean();
+    }
+    inline void find(void(*callback)(value*,void*),const vec & beg,const vec & end,void * arg,bool issort=true,int maxnum=-1)const{
+      root->find(callback,beg,end,arg,issort,maxnum);
     }
   };
 }
