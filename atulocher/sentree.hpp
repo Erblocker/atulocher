@@ -504,7 +504,7 @@ namespace atulocher{
     
     public:
     node * root;
-    list<node*> allnode;
+    vector<node*> allnode;
     virtual void init(){
       root=newNode();
       root->value="root";
@@ -587,7 +587,8 @@ namespace atulocher{
         p->paserAbsposi();
       }
     }
-    virtual void buildTag(const list<string> & words,CRFPP::Tagger *tagger){
+    template<class T>
+    void buildTag(const T & words,CRFPP::Tagger *tagger){
       tagger->clear();
       for(auto wd:words)tagger->add(wd.c_str());
       if (! tagger->parse()) return;

@@ -1,3 +1,5 @@
+CC=g++ -std=c++0x -I ../leveldb/include -I ../ 
+
 all : atulocher
 	
 atulocher :utils.hpp.gch \
@@ -11,85 +13,85 @@ atulocher :utils.hpp.gch \
            kbtree.hpp.gch \
            triemap.hpp.gch \
            dmsg.hpp.gch
-	g++ main.cpp -std=c++0x -ldl -llua -lpthread 
+	$(CC) main.cpp -ldl -llua -lpthread 
 
 dmsg.hpp.gch : dmsg.hpp cyqueue.hpp.gch
-	g++ dmsg.hpp -std=c++0x
+	$(CC) dmsg.hpp
 
 cyqueue.hpp.gch : cyqueue.hpp
-	g++ cyqueue.hpp -std=c++0x
+	$(CC) cyqueue.hpp
 
 triemap.hpp.gch : triemap.hpp
-	g++ triemap.hpp -std=c++0x
+	$(CC) triemap.hpp
 
 tctree.hpp.gch : tctree.hpp
-	g++ tctree.hpp -std=c++0x
+	$(CC) tctree.hpp
 
 ktctree.hpp.gch : ktctree.hpp
-	g++ ktctree.hpp -std=c++0x
+	$(CC) ktctree.hpp
 
 kbtree.hpp.gch : kbtree.hpp
-	g++ kbtree.hpp -std=c++0x
+	$(CC) kbtree.hpp
 
 utils.hpp.gch : utils.hpp
-	g++ utils.hpp -std=c++0x -I  ../leveldb/include
+	$(CC) utils.hpp
 
 graph.hpp.gch : graph.hpp
-	g++ graph.hpp -std=c++0x -I  ../leveldb/include
+	$(CC) graph.hpp
 
 matht.hpp.gch : matht.hpp
-	g++ matht.hpp -std=c++0x
+	$(CC) matht.hpp
 
 dectree.hpp.gch : dectree.hpp
-	g++ dectree.hpp -std=c++0x -I ../leveldb/include
+	$(CC) dectree.hpp 
 
 math.hpp.gch : math.hpp
-	g++ math.hpp -std=c++0x
+	$(CC) math.hpp
 
 kmeans.hpp.gch : kmeans.hpp
-	g++ kmeans.hpp -std=c++0x
+	$(CC) kmeans.hpp
 
 GPU.hpp.gch : GPU.hpp
-	g++ GPU.hpp -std=c++0x
+	$(CC) GPU.hpp
 
 active.hpp.gch : active.hpp bayes.hpp.gch dectree.hpp.gch
-	g++ active.hpp -std=c++0x -I  ../leveldb/include
+	$(CC) active.hpp
 
 bayes.hpp.gch : bayes.hpp
-	g++ bayes.hpp -std=c++0x
+	$(CC) bayes.hpp
 
 vec3.hpp.gch : vec3.hpp math.hpp.gch
-	g++ vec3.hpp -std=c++0x
+	$(CC) vec3.hpp
 
 rand.hpp.gch : rand.hpp
-	g++ rand.hpp -std=c++0x
+	$(CC) rand.hpp
 
 octree.hpp.gch : octree.hpp vec3.hpp.gch
-	g++ octree.hpp -std=c++0x
+	$(CC) octree.hpp
 
 language.hpp.gch : language.hpp word2vec.hpp.gch sentree.hpp.gch
-	g++ language.hpp -std=c++0x
+	$(CC) language.hpp
 
 sentree.hpp.gch : sentree.hpp
-	g++ sentree.hpp -std=c++0x -I ../ 
+	$(CC) sentree.hpp
 
 ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch
-	g++ ksphere.hpp -std=c++0x
+	$(CC) ksphere.hpp
 
 luapool.hpp.gch : luapool.hpp
-	g++ luapool.hpp -std=c++0x
+	$(CC) luapool.hpp
 
 word2vec.hpp.gch : word2vec.hpp ksphere.hpp.gch
-	g++ word2vec.hpp -std=c++0x
+	$(CC) word2vec.hpp
 
 module.hpp.gch : module.hpp luapool.hpp.gch
-	g++ module.hpp -std=c++0x
+	$(CC) module.hpp
 
 mempool.hpp.gch : mempool.hpp
-	g++ mempool.hpp -std=c++0x
+	$(CC) mempool.hpp
 
 threadpool.hpp.gch : threadpool.hpp
-	g++ threadpool.hpp -std=c++0x
+	$(CC) threadpool.hpp
 
 clean:
 	rm *.gch

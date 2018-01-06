@@ -3,42 +3,60 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <map>
 #include "mempool.hpp"
 namespace atulocher{
+  template<typename T>
   class triemap{
     public:
     struct node{
-      node * next,
-           * parent;
-      node * child[256];
-      void * data;
-      unsigned char position,childnum;
+      node               * next,
+                         * parent;
+      std::map<char,node*> child;
+      T   *                data;
+      char buffer[sizeof(T)];
+      unsigned char position;
       void construct(){
         parent=NULL;
-        for(int i=0;i<256;i++){
-          child[i]=NULL;
-        }
+        child.clear();
         data=NULL;
-        childnum='\0';
+        //data=(T*)buffer;
+        //*data=T();
         position='\0';
+      }
+      void destruct(){
+        if(data){
+          data->~T();
+          data=NULL;
+        }
+        child.clear();
+      }
+      void operator=(const T & d){
+        if(data)data->~T();
+        data=(T*)buffer;
+        data->T(d);
       }
     };
     mempool<node> npool;
     node * root;
     inline node * getChild(node * n,unsigned char c){
-      return n->child[c];
+      auto it=n->child.find(c);
+      if(it==n->child.end())
+        return NULL;
+      else
+        return it->second;
+      //return n->child[c];
     }
     node * getChild_f(node * n,unsigned char c){
-      auto res=n->child[c];
+      node *& res=n->child[c];
       if(res)
         return res;
       else{
         auto pp=npool.get();
         pp->construct();
         pp->parent=n;
-        n->child[c]=pp;
+        res=pp;
         pp->position=c;
-        n->childnum++;
         return pp;
       }
     }
@@ -46,10 +64,10 @@ namespace atulocher{
       auto n=inpn;
       while(n){
         if(n->data!=NULL)return;
-        if(n->childnum!=0)return;
+        if(n->child.size()!=0)return;
         auto p=n->parent;
+        n->destruct();
         npool.del(n);
-        p->childnum--;
         n=p;
       }
     }
@@ -58,9 +76,7 @@ namespace atulocher{
       auto sp=str;
       while(*sp){
         n=getChild(n,*sp);
-        
         if(n==NULL)return NULL;
-        
         sp++;
       }
       return n;
@@ -76,16 +92,26 @@ namespace atulocher{
     }
     void erase(unsigned char * str){
       auto p=find(str);
+      p->data->~T();
       p->data=NULL;
       autoremove(p);
     }
-    void * & operator[](unsigned char * str){
-      return find_f(str)->data;
+    T & operator[](unsigned char * str){
+      auto it=find_f(str);
+      if(it->data==NULL)
+        it->data=(T*)it->buffer;
+      *(it->data)=T();
+      return it->data;
     }
     void destroy(node * n){
       if(n==NULL)return;
-      for(int i=0;i<256;i++){
-        if(n->child[i])destroy(n->child[i]);
+      if(n->data){
+        n->data->~T();
+        n->data=NULL;
+      }
+      for(auto it:n->child){
+        if(it.second==NULL)continue;
+        destroy(it.second);
       }
       npool.del(n);
     }
@@ -97,5 +123,6 @@ namespace atulocher{
       destroy(root);
     }
   };
+  triemap<int> test;
 }
 #endif

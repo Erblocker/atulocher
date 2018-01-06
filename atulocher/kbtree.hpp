@@ -4,7 +4,14 @@
 #include <set>
 #include <vector>
 #include <math.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <atomic>
 #include <list>
+#include <sstream>
+#include <time.h>
+#include <leveldb/db.h>
+#include <leveldb/write_batch.h>
 namespace atulocher{
   class kbtree{
     public:
@@ -275,6 +282,67 @@ namespace atulocher{
     inline void find(void(*callback)(value*,void*),const vec & beg,const vec & end,void * arg,bool issort=true,int maxnum=-1)const{
       root->find(callback,beg,end,arg,issort,maxnum);
     }
+  };
+  class kbtree_disk{
+    public:
+    typedef std::vector<double> vec;
+    leveldb::DB     * db;
+    std::string       name;
+    inline bool key_exist(const char * key){}
+    inline void getRandName(std::string & key){
+      begin:
+      int tm=time(NULL);
+      char buf[64];
+      static std::atomic<int> last;
+      unsigned int tmp=last;
+      int rd=rand_r(&tmp);
+      last=rd;
+      snprintf(buf,64,"%d.%d",tm,rd);
+      if(key_exist(buf))goto begin;
+      key=buf;
+    }
+    
+    struct node{
+      vec position,
+          len;
+      int deep,k;
+      std::string parent,left,right;
+      void encode(std::string & s,int mk)const{
+        std::ostringstream iss(s);
+        for(int i=0;i<mk;i++){
+          iss<<position.at(i);
+          iss<<len.at(i);
+        }
+        iss<<deep;
+        iss<<k;
+        iss<<left;
+        iss<<right;
+        iss<<parent;
+      }
+      void decode(const std::string & s,int mk){
+        std::istringstream iss(s);
+        position.resize(mk);
+        len.resize(mk);
+        for(int i=0;i<mk;i++){
+          iss>>position[i];
+          iss>>len[i];
+        }
+        iss>>deep;
+        iss>>k;
+        iss>>left;
+        iss>>right;
+        iss>>parent;
+      }
+      /*
+        encode:
+          v1 l1 v2 l2 v3 l3 ...
+          deep
+          k
+          leftposition
+          rightposition
+          parent
+      */
+    };
   };
 }
 #endif
