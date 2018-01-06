@@ -1,10 +1,19 @@
-all:./leveldb/out-static/libleveldb.a \
-      ./crfpp/crf_learn
-	
+PREFIX?=/usr/local
+LIBDIR=$(PREFIX)/lib
+BINDIR=$(PREFIX)/bin
+INCLUDEDIR=$(PREFIX)/include
 
+all:./leveldb/out-static/libleveldb.a \
+     atu-inc
+	
 ./leveldb/out-static/libleveldb.a :
 	cd leveldb    && make
-./crfpp/crf_learn : 
-	cd crfpp && ./configure && make
-libatulocher.so : atulocher.cpp
-	g++ atulocher.cpp -std=c++0x -I ./include -I ./crfpp -fPIC -shared -o libatulocher.so
+atu-inc:
+	cd atulocher  && make
+
+install:
+	@mkdir -p $(INCLUDEDIR)/atulocher
+	cp -r atulocher $(INCLUDEDIR)/
+	
+uninstall:
+	rm -rvf $(INCLUDEDIR)/atulocher

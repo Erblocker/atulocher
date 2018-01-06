@@ -4,9 +4,9 @@ class Msg:public Dmsg_server{
   virtual void onGetMessage(node * p,int fd,int sessid){
     printf("%s %d\n",p->data,sessid);
     Dmsg_node r;
-    snprintf(r.data,4096,"recv ");
+    snprintf(r.data,ATU_CHUNK_SIZE,"recv ");
     //sendMsg(&r,sessid);
-    send(fd,r.data,4096,0);
+    send(fd,r.data,ATU_CHUNK_SIZE,0);
   }
   virtual void onLogout(int id){
     printf("logout:%d\n",id);

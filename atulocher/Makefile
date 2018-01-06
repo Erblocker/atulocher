@@ -12,8 +12,11 @@ atulocher :utils.hpp.gch \
            ktctree.hpp.gch \
            kbtree.hpp.gch \
            triemap.hpp.gch \
-           dmsg.hpp.gch
+           rpc.hpp.gch
 	$(CC) main.cpp -ldl -llua -lpthread 
+
+rpc.hpp.gch : rpc.hpp
+	$(CC) rpc.hpp
 
 dmsg.hpp.gch : dmsg.hpp cyqueue.hpp.gch
 	$(CC) dmsg.hpp

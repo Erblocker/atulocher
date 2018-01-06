@@ -288,26 +288,44 @@ namespace atulocher{
     typedef std::vector<double> vec;
     leveldb::DB     * db;
     std::string       name;
-    inline bool key_exist(const char * key){}
-    inline void getRandName(std::string & key){
-      begin:
-      int tm=time(NULL);
+    int               id;
+    int               k;
+    private:
+    void getId(){
+      id=0;
+      char key[128];
+      snprintf(key,128,"dct_%s_config_id",name.c_str());
+      std::string v;
+      if(!db->Get(leveldb::ReadOptions(),key,&v).ok())return;
+      if(v.empty())return;
+      this->id=atoi(v.c_str());
+    }
+    void updateId(){
+      ++id;
+      char key[128];
+      char val[128];
+      snprintf(key,128,"dct_%s_config_id",name.c_str());
+      snprintf(val,128,"%d",id);
+      db->Put(leveldb::WriteOptions(),key,val);
+    }
+    inline int getNewName(){
+      int res=id;
+      this->updateId();
+      return res;
+    }
+    inline void getNewName(std::string & key){
       char buf[64];
-      static std::atomic<int> last;
-      unsigned int tmp=last;
-      int rd=rand_r(&tmp);
-      last=rd;
-      snprintf(buf,64,"%d.%d",tm,rd);
-      if(key_exist(buf))goto begin;
+      snprintf(buf,64,"%d",this->id);
+      this->updateId();
       key=buf;
     }
-    
     struct node{
       vec position,
           len;
       int deep,k;
-      std::string parent,left,right;
+      int parent,left,right;
       void encode(std::string & s,int mk)const{
+        s.clear();
         std::ostringstream iss(s);
         for(int i=0;i<mk;i++){
           iss<<position.at(i);
@@ -343,6 +361,25 @@ namespace atulocher{
           parent
       */
     };
+    void setNode(int nid,const node & n){
+      char key[128];
+      snprintf(key,128,"dct_%s_node_%d",name.c_str(),nid);
+      std::string str;
+      n.encode(str,this->k);
+      db->Put(leveldb::WriteOptions(),key,str);
+    }
+    bool getNode(int nid,node & n){
+      char key[128];
+      snprintf(key,128,"dct_%s_node_%d",name.c_str(),nid);
+      std::string v;
+      if(!db->Get(leveldb::ReadOptions(),key,&v).ok())return false;
+      if(v.empty())return false;
+      n.decode(v,this->k);
+      return true;
+    }
+    void createLeft(const node & n,int id){
+      
+    }
   };
 }
 #endif

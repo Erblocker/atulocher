@@ -31,102 +31,165 @@ namespace atulocher{
         return val();
       }
     };
-    struct package{
-      nint32 id;
-      nint32 func;
-      char   mode;
-      char   buf[4000];
+    struct Header{
+      int32_t id,len;
     };
-    class base{
-      public:
-      inline void sendChunk(package * pk,int fd){
-        Dmsg_node n;
-        bzero(n.data,4096);
-        memcpy(n.data,pk,sizeof(package));
-        send(fd,n.data,4096,0);
-      }
-      void sendStr(const char * str,int fd){
-        auto p=str;
-        int i=0;
-        package pk;
-        while(*p){
-          pk.buf[i]=*p;
-          p++;
-          i++;
-          if(i==3999){
-            pk.buf[3999]='\0';
-            sendChunk(&pk,fd);
-            i=0;
-            bzero(&pk,sizeof(pk));
-          }
+    class MsgServer:public Dmsg_server{
+      private:
+      struct CliInfo{
+        char * buf;
+        int len,ptr,id,fd;
+        MsgServer * owner;
+        void init(int l){
+          buf=(char*)malloc(l);
+          len=l;
+          ptr=0;
         }
-        pk.buf[3999]='\0';
-        pk.buf[i]   ='\0';
-        sendChunk(&pk,fd);
-      }
-    };
-    class Client:public base,public Dmsg_client{
+        void destroy(){
+          if(buf)free(buf);
+          len=0;
+          ptr=0;
+          buf=NULL;
+        }
+        bool finish(){
+          if(ptr>=len)
+            return true;
+          else
+            return false;
+        }
+        void append(char c){
+          //if(finish())return;
+          buf[ptr]=c;
+          ptr++;
+        }
+        #define autocheck \
+          if(finish()){\
+            callfunc();\
+            destroy();\
+            return;\
+          }
+        void add(void * pk){
+          if(owner==NULL)return;
+          auto bf=(char*)pk;
+          if(len==0){
+            
+            auto hd=(Header*)pk;
+            id=hd->id;
+            
+            #ifdef DEBUG
+            printf("begin id=%x\n",id);
+            printf("init:%x\n",hd->len);
+            
+            printf("data:");
+            for(int i=0;i<ATU_CHUNK_SIZE;i++)
+              printf("%c",bf[i]);
+            printf("\n");
+            #endif
+            
+            auto it=owner->funcs.find(id);
+            if(it== owner->funcs.end())return;
+            
+            int tmplen;
+            if(it->second->maxlen < hd->len)
+              tmplen=it->second->maxlen;
+            else
+              tmplen=hd->len;
+            
+            this->init(tmplen);
+            return;
+          }
+          
+          for(int i=0;i<ATU_CHUNK_SIZE;i++){
+            autocheck;
+            append(bf[i]);
+          }
+          autocheck;
+        }
+        #undef autocheck
+        void callfunc(){
+          if(owner==NULL)return;
+          auto it=owner->funcs.find(id);
+          if(it== owner->funcs.end())return;
+          it->second->func(buf,len,fd);
+        }
+      };
       public:
-      virtual void call(int fid,const string & in,string & out){
-        
+      class callback{
+        public:
+        int maxlen;
+        virtual void func(void*,int,int)=0;
+      };
+      private:
+      map<int,CliInfo> clis;
+      map<int,callback*> funcs;
+      public:
+      void add(int id,callback * cb){
+        funcs[id]=cb;
       }
-    };
-    class Server:public Dmsg_server,public base{
       private:
       virtual void onGetMessage(node * p,int fd,int sessid){
-        auto pk=(package*)p->data;
-        
-        int id=pk->id.val();
-        int func=pk->func.val();
-        
-        switch(pk->mode){
-          case 'd':
-            sesses[sessid].erase(id);
-          break;
-          case 'a':
-            pk->buf[3999]='\0';
-            this->append(sessid,id,pk->buf,func);
-          break;
-          case 'c':
-            this->call(sessid,id,fd);
-          break;
+        #ifdef DEBUG
+        printf("onmsg:%d\n",sessid);
+        #endif
+        begin:
+        auto it=clis.find(sessid);
+        if(it==clis.end()){
+          initcli(sessid);
+          goto begin;
         }
+        it->second.add(p->data);
       }
-      void onLogout(int sid){
-        sesses.erase(sid);
+      virtual void onLogin(int id){
+        #ifdef DEBUG
+        printf("login:%d\n",id);
+        #endif
+        initcli(id);
       }
-      typedef void(*callback)(const string &,string &);
-      typedef pair<int,string>    status;
-      typedef map<int,status>     staset;
-      map<int,staset>             sesses;
-      map<int,callback>           funcs;
-      void setfunc(int sid,int id,int fid){
-        sesses[sid][id].first=fid;
+      virtual void initcli(int id){
+        CliInfo & p=clis[id];
+        p.fd=getfdbysid(id);
+        p.id=id;
+        p.len=0;
+        p.ptr=0;
+        p.buf=NULL;
+        p.owner=this;
       }
-      void append(int sid,int id,char * p,int fid){
-        status & it=sesses[sid][id];
-        it.first=fid;
-        it.second+=p;
+      virtual void onLogout(int id){
+        #ifdef DEBUG
+        printf("logout:%d\n",id);
+        #endif
+        auto it=clis.find(id);
+        if(it==clis.end())return;
+        it->second.destroy();
+        clis.erase(it);
       }
-      inline void call(int sid,int id,int fd){
-        string res;
-        call(sid,id,res);
-        sendStr(res.c_str(),fd);
-      }
-      void call(int sid,int id,string & res){
-        auto pp=sesses.find(sid);
-        if(pp==sesses.end())return;
+    };
+    class MsgClient:public Dmsg_client{
+      public:
+      MsgClient(const char * addr,u_short port):Dmsg_client(addr,port){}
+      virtual void call(int id,void * buf,int len){
+        int ptr=0;
+        auto cbuf=(char*)buf;
+        node nbuf;
+        nbuf.len=ATU_CHUNK_SIZE;
         
-        staset & sp=pp->second;
+        auto hd=(Header*)nbuf.data;
+        bzero(nbuf.data,ATU_CHUNK_SIZE);
+        hd->id=id;
+        hd->len=len;
+        sendMsg(&nbuf);
         
-        auto np=sp.find(id);
-        if(np==sp.end())return;
+        while(1){
+          if(ptr>=len)break;
+          bzero(nbuf.data,ATU_CHUNK_SIZE);
+          for(int i=0;i<ATU_CHUNK_SIZE;i++){
+            if(ptr>=len)break;
+            nbuf.data[i]=cbuf[ptr];
+            ++ptr;
+          }
+          sendMsg(&nbuf);
           
-        status & ps=np->second;
-        auto fp=funcs.find(ps.first);
-        if(fp==funcs.end())return;
-        
-        fp->second(ps.second,res);
+        }
       }
     };
   }

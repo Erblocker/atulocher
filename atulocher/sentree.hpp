@@ -26,7 +26,7 @@ namespace atulocher{
     public:
     class node{
       public:
-      typedef mempool_auto<node> GC;
+      typedef mempool<node> GC;
       node *  next,
            *  last,
            *  parent,
@@ -497,10 +497,10 @@ namespace atulocher{
     node::GC npool;
     int index;
     
-    public:
-    inline void bind(mempool<node>* p){
-      npool.bind(p);
-    }
+    //public:
+    //inline void bind(mempool<node>* p){
+    //  npool.bind(p);
+    //}
     
     public:
     node * root;
@@ -511,16 +511,22 @@ namespace atulocher{
       index=1;
       //allnode.push_back(root);
     }
+    virtual void delall(){
+      for(auto it:allnode){
+        npool.del(it);
+      }
+      npool.del(root);
+    }
     virtual void clear(){
       allnode.clear();
-      npool.clear();
+      delall();
       this->init();
     }
     sentree(){
       this->init();
     }
     ~sentree(){
-      
+      delall();
     }
     virtual void add(node * p){
       root->right.pushEnd(p);

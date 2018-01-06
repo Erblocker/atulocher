@@ -27,6 +27,7 @@
 #include "mempool.hpp"
 #include "rwmutex.hpp"
 #include "cyqueue.hpp"
+#define ATU_CHUNK_SIZE 64
 namespace atulocher{
   class Dmsg_base{
     public:
@@ -119,9 +120,9 @@ namespace atulocher{
           }else if(events[i].events & EPOLLIN) {
             if((connfd = events[i].data.fd) < 0) continue;
             //处理请求
-            char cbuf[4096];
+            char cbuf[ATU_CHUNK_SIZE];
             int len;
-            if((len=read(connfd, cbuf, 4096)) <= 0) {
+            if((len=read(connfd, cbuf, ATU_CHUNK_SIZE)) <= 0) {
               
               onQuit(connfd);
               ev.data.fd = connfd;
@@ -166,11 +167,11 @@ namespace atulocher{
     public:
     struct node{
       node * next;
-      char data[4096];
+      char data[ATU_CHUNK_SIZE];
       unsigned int  len;
     };
     int sendMsg(int fd,node * d){
-      return send(fd,d->data,4096,0);
+      return send(fd,d->data,ATU_CHUNK_SIZE,0);
     }
   };
   typedef Dmsg_client_base::node Dmsg_node;
@@ -192,15 +193,17 @@ namespace atulocher{
       if(sockfd!=-1)close(sockfd);
     }
     inline int sendMsg(node * d){
-      return send(sockfd,d->data,4096,0);
+      return send(sockfd,d->data,ATU_CHUNK_SIZE,0);
     }
     inline int recvMsg(node * d){
-      return read(sockfd,d->data,4096);
+      return read(sockfd,d->data,ATU_CHUNK_SIZE);
     }
   };
   class Dmsg_server:public Dmsg_base,public Dmsg_client_base{
     public:
-    Dmsg_server(int cyl=256):cy(cyl){}
+    Dmsg_server(int cyl=256):cy(cyl){
+      session=0;
+    }
     private:
     cyqueue<std::pair<node*,int> > cy;//环形缓冲区
     struct conn{
@@ -212,6 +215,15 @@ namespace atulocher{
     std::atomic<int> session;
     std::map<int,conn*> conns;
     std::map<int,int>   sessions;
+    public:
+    int getfdbysid(int sid){
+      auto it=sessions.find(sid);
+      if(it==sessions.end())
+        return 0;
+      else
+        return it->second;
+    }
+    private:
     struct status{
       status * next;
       int fd;
@@ -267,7 +279,7 @@ namespace atulocher{
     }
     inline void checkbuf(conn * cp,int connfd){
       auto p=cp->data;
-      if(p->len>=4096){
+      if(p->len>=ATU_CHUNK_SIZE){
         cp->data=npool.get();
         cp->data->len=0;
         auto sp=spool.get();
@@ -304,13 +316,13 @@ namespace atulocher{
       checkbuf(cp,connfd);
       
       while(1){
-        char buf[4096];
-        int slen=read(connfd,buf,4096);
+        char buf[ATU_CHUNK_SIZE];
+        int slen=read(connfd,buf,ATU_CHUNK_SIZE);
         if(slen<=0)return;
         for(int j=0;j<slen;j++)
           charAppend(cp,buf[j],connfd);
         checkbuf(cp,connfd);
-        if(slen<4096)return;
+        if(slen<ATU_CHUNK_SIZE)return;
       }
       
     }
@@ -342,7 +354,7 @@ namespace atulocher{
       if(it==conns.end())return;
       cp=it->second;
       for(auto it:cp->waitforsend){
-        send(connfd,it->data,4096,0);
+        send(connfd,it->data,ATU_CHUNK_SIZE,0);
         npool.del(it);
       }
       cp->waitforsend.clear();
@@ -365,7 +377,7 @@ namespace atulocher{
         if(it==conns.end())continue;
         cp=it->second;
         node * bd=buf.first;
-        bd->len=4096;
+        bd->len=ATU_CHUNK_SIZE;
         cp->waitforsend.push_back(bd);
       
         epoll_event ev;
@@ -377,8 +389,8 @@ namespace atulocher{
     public:
     virtual void sendMsg(node * d,int sessid){
       node * bd=npool.get();
-      memcpy(bd->data,(const char*)d->data,4096);
-      bd->len=4096;
+      memcpy(bd->data,(const char*)d->data,ATU_CHUNK_SIZE);
+      bd->len=ATU_CHUNK_SIZE;
       std::pair<node*,int> buf;
       buf.first=bd;
       buf.second=sessid;

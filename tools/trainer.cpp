@@ -3,6 +3,7 @@
 #include <memory.h>
 #include <atulocher/sentree.hpp>
 atulocher::mempool<atulocher::sentree::node> gbpool;
+FILE * fd;
 void paser(FILE * fp){
   atulocher::sentree st;
   st.bind(&gbpool);
@@ -18,19 +19,21 @@ void paser(FILE * fp){
   st.foreach([](const atulocher::sentree::node * p,void *){
     if(p->index==0)return;
     char buf[256];
-    printf("%s\n",
+    fprintf(fd,"%s\n",
       p->toString(buf,256)
     );
   },NULL);
-  printf("_\t_\t_\t_\t_\n");
+  fprintf(fd,"_ _ _ _ _\n");
 }
 int main(){
   FILE * fp=fopen("train.conll","r");
-  
+  fd=fopen("train.txt","w");
   if(!fp)return 1;
+  if(!fd)return 1;
   while(!feof(fp)){
     paser(fp);
   }
   fclose(fp);
+  fclose(fd);
   return 0;
 }

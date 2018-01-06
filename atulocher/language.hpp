@@ -11,6 +11,7 @@
 #include "word2vec.hpp"
 #include "sentree.hpp"
 #include "dectree.hpp"
+#include "active.hpp"
 #include <crfpp.h>
 #include "cppjieba/Jieba.hpp"
 namespace atulocher{
@@ -36,6 +37,8 @@ namespace atulocher{
     CRFPP::Tagger                   * senter,        //CRF模型，句法树构建
                                     * tagger;        //CRF模型，标注
     dectree::dectree                * dct;           //决策树，精确思维(逻辑思维)
+    
+    active                          * actives;
     lang(){
     }
     ~lang(){
@@ -62,13 +65,34 @@ namespace atulocher{
       think();
     }
     virtual void addkm(int i){
-      
+      Vector bufv(512);
+      auto pts=tree.allnode[i];
+      std::string bufkm1,bufkm2;
+      std::list<std::pair<std::string,std::string> > bufw;
+      pts->foreach([](const sentree::node * n,void * arg){
+        auto bufw=(std::list<std::pair<std::string,std::string> >*)arg;
+        bufw->push_back(std::pair<std::string,std::string>(n->value,n->wordTag));
+      },&bufw);
+      actives->getkm(bufw,bufv,512,bufkm1,bufkm2);
+      keymeans[bufkm1]=std::pair<Vector,std::string>(bufv,bufkm2);
     }
     virtual void addtg(int i){
-      
+      Vector bufv(512);
+      auto pts=tree.allnode[i];
+      std::string bufkm;
+      std::list<std::string> bufw;
+      pts->foreach([](const sentree::node * n,void * arg){
+        auto bufw=(std::list<std::string>*)arg;
+        bufw->push_back(n->value);
+      },&bufw);
+      actives->gettg(bufw,bufv,512,bufkm);
+      target[bufkm]=bufv;
     }
-    virtual void doactivity(double * arr,int i){
-      
+    virtual void doactivity(double * arr,int l){
+      std::string actname;
+      actives->getActName(arr,l,actname);
+      if(actname.empty())return;
+      dct->doActivity(actname);
     }
     virtual void getkeymeans(){
       double buf[512],res[512];
@@ -162,7 +186,12 @@ namespace atulocher{
       for(int k=0;k<516;k++)res[k]=0;
       for(;i<times;i++){
         PSPredict(tknn,res,res,516,i,times);
-        if(getmax(res,516)==515)break;//EOS_3
+        //if(getmax(res,516)==515)break;//EOS_3
+        if(
+          res[515]>res[514] &&
+          res[515]>res[513] &&
+          res[515]>res[512]
+        )break;
         doactivity(res,512);
       }
     }

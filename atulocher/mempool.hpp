@@ -7,7 +7,8 @@ namespace atulocher{
     class mempool_block{
       T * freed;
       std::mutex locker;
-      std::atomic<int> rnum;//引用计数器
+      std::atomic<int> rnum,//引用计数器
+                       malloced,used;
       public:
       void pickup(){
         rnum++;
@@ -20,6 +21,8 @@ namespace atulocher{
         }
       }
       mempool_block(){
+        malloced=0;
+        used=0;
         freed=NULL;
         rnum=1;
       }
@@ -31,8 +34,14 @@ namespace atulocher{
           it=it->next;
           delete it1;
         }
+        #ifdef DEBUG
+        int mn=malloced;
+        int un=used;
+        printf("malloc:%d\tused:%d\n",mn,un);
+        #endif
       }
       T * get(){
+        used++;
         locker.lock();
         if(freed){
           T * r=freed;
@@ -41,6 +50,7 @@ namespace atulocher{
           return r;
         }else{
           locker.unlock();
+          malloced++;
           return new T;
         }
       }
@@ -49,27 +59,35 @@ namespace atulocher{
         f->next=freed;
         freed=f;
         locker.unlock();
+        used--;
       }
     };
     template<typename T>
     class mempool{
       protected:
       mempool_block<T> * parpool;
+      std::atomic<int> malloced,used;
       public:
       mempool(){
-        parpool=new mempool_block<T>;
-      }
-      mempool(const mempool<T> & pp){
-        parpool=pp.parpool;
-        parpool->pickup();
+        malloced=0;
+        used=0;
+        static mempool_block<T> gbpool;
+        parpool=&gbpool;
       }
       ~mempool(){
-        parpool->giveup();
+        #ifdef DEBUG
+        int mn=malloced;
+        int un=used;
+        printf("malloc:%d\tused:%d\n",mn,un);
+        #endif
       }
       T * get(){
+        malloced++;
+        used++;
         return parpool->get();
       }
       void del(T * f){
+        used--;
         parpool->del(f);
       }
     };
