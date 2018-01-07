@@ -1,9 +1,9 @@
 #ifndef atulocher_active
 #define atulocher_active
 #include <crfpp.h>
-#include "dectree.hpp"
+#include "language.hpp"
 namespace atulocher{
-  class active{
+  class active:public lang{
     public:
     CRFPP::Tagger * tagger;
     void getActName(const double * arr,int len,std::string & name){
@@ -21,7 +21,10 @@ namespace atulocher{
       std::string & key){
       
     }
-    void getkm(
+    virtual void doactivity(double * arr,int l){
+       
+    }
+    virtual void getkm(
       const std::list<std::pair<std::string,std::string> > & kms,
       std::vector<double> & arr,
       int len,
@@ -57,7 +60,7 @@ namespace atulocher{
       getObj(objs,arr,len,key);
       getVal(tags,value);
     }
-    void gettg(
+    virtual void gettg(
       const std::list<std::string> & kms,
       std::vector<double> & arr,
       int len,

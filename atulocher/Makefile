@@ -45,9 +45,6 @@ graph.hpp.gch : graph.hpp
 matht.hpp.gch : matht.hpp
 	$(CC) matht.hpp
 
-dectree.hpp.gch : dectree.hpp
-	$(CC) dectree.hpp 
-
 math.hpp.gch : math.hpp
 	$(CC) math.hpp
 
@@ -57,7 +54,7 @@ kmeans.hpp.gch : kmeans.hpp
 GPU.hpp.gch : GPU.hpp
 	$(CC) GPU.hpp
 
-active.hpp.gch : active.hpp bayes.hpp.gch dectree.hpp.gch
+active.hpp.gch : active.hpp bayes.hpp.gch language.hpp.gch
 	$(CC) active.hpp
 
 bayes.hpp.gch : bayes.hpp

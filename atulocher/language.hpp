@@ -1,5 +1,8 @@
 #ifndef atulocher_language
 #define atulocher_language
+#ifndef atulocher_language_tensor_size
+  #define atulocher_language_tensor_size 512
+#endif
 #include "ann.hpp"
 #include <map>
 #include <list>
@@ -10,8 +13,6 @@
 #include <exception>
 #include "word2vec.hpp"
 #include "sentree.hpp"
-#include "dectree.hpp"
-#include "active.hpp"
 #include <crfpp.h>
 #include "cppjieba/Jieba.hpp"
 namespace atulocher{
@@ -33,21 +34,16 @@ namespace atulocher{
     sentree                           tree;          //句法树
     
     ann::FD                           kmext,         //LSTM神经网络，抽取目标
-                                      tknn;          //LSTM encoder-decoder模型，为精确思维做预处理(直观思维)
+                                      tknn;          //LSTM encoder-decoder模型，思维
     
     CRFPP::Tagger                   * senter,        //CRF模型，句法树构建
                                     * tagger;        //CRF模型，标注
-    dectree::dectree                * dct;           //决策树，精确思维(逻辑思维)
-    
-    active                          * actives;
-    bool                              usedct;
     lang(){
     }
     ~lang(){
     }
     virtual void solve(const string & w){
       if(tknn==0)return;
-      if(dct==0)return;
       std::vector<cppjieba::KeywordExtractor::Word> kw;
       
       cutter->extractor.Extract(w,kw,5);
@@ -63,11 +59,10 @@ namespace atulocher{
       tree.buildTree(this->senter);
       
       getkeymeans();
-      prethink();
-      if(usedct)think();
+      think();
     }
     virtual void addkm(int i){
-      Vector bufv(512);
+      Vector bufv(atulocher_language_tensor_size);
       auto pts=tree.allnode[i];
       std::string bufkm1,bufkm2;
       std::list<std::pair<std::string,std::string> > bufw;
@@ -75,11 +70,11 @@ namespace atulocher{
         auto bufw=(std::list<std::pair<std::string,std::string> >*)arg;
         bufw->push_back(std::pair<std::string,std::string>(n->value,n->wordTag));
       },&bufw);
-      actives->getkm(bufw,bufv,512,bufkm1,bufkm2);
+      this->getkm(bufw,bufv,atulocher_language_tensor_size,bufkm1,bufkm2);
       keymeans[bufkm1]=std::pair<Vector,std::string>(bufv,bufkm2);
     }
     virtual void addtg(int i){
-      Vector bufv(512);
+      Vector bufv(atulocher_language_tensor_size);
       auto pts=tree.allnode[i];
       std::string bufkm;
       std::list<std::string> bufw;
@@ -87,26 +82,20 @@ namespace atulocher{
         auto bufw=(std::list<std::string>*)arg;
         bufw->push_back(n->value);
       },&bufw);
-      actives->gettg(bufw,bufv,512,bufkm);
+      this->gettg(bufw,bufv,atulocher_language_tensor_size,bufkm);
       target[bufkm]=bufv;
     }
-    virtual void doactivity(double * arr,int l){
-      std::string actname;
-      actives->getActName(arr,l,actname);
-      if(actname.empty())return;
-      dct->doActivity(actname);
-    }
     virtual void getkeymeans(){
-      double buf[512],res[512];
+      double buf[atulocher_language_tensor_size],res[atulocher_language_tensor_size];
       int i=0,
           times=sent.size();
       for(auto it:sent){
         int j;
         for(j=0;j<it.size();j++){
-          if(j>=512)break;
+          if(j>=atulocher_language_tensor_size)break;
           buf[j]=it[j];
         }
-        ann::Predict(kmext,buf,res,512,i,times);
+        ann::Predict(kmext,buf,res,atulocher_language_tensor_size,i,times);
 
         int max_idx=0;
         double max=0;
@@ -149,57 +138,66 @@ namespace atulocher{
       }
       return max_idx;
     }
-    virtual void prethink(){
+    virtual void think(){
       int i=0;
       int encodetimes=keymeans.size()+target.size();
       int decodetimes=encodetimes*8;
       int times=encodetimes+decodetimes;
-      double buf[516],res[516];
-      //[512]:Normal
-      //[513]:EOS_1
-      //[514]:EOS_2
-      //[515]:EOS_3
+      double buf[atulocher_language_tensor_size+4],res[atulocher_language_tensor_size+4];
+      //[atulocher_language_tensor_size+0]:Normal
+      //[atulocher_language_tensor_size+1]:EOS_1
+      //[atulocher_language_tensor_size+2]:EOS_2
+      //[atulocher_language_tensor_size+3]:EOS_3
       //encode
       for(auto it:keymeans){
-        set1(buf,515,512);
+        set1(buf,atulocher_language_tensor_size+3,atulocher_language_tensor_size);
         Vector & vp=it.second.first;
-        for(int j=0;j<512;j++)buf[j]=vp.at(j);
-        ann::Predict(tknn,buf,res,516,i,times);
+        for(int j=0;j<atulocher_language_tensor_size;j++)buf[j]=vp.at(j);
+        ann::Predict(tknn,buf,res,atulocher_language_tensor_size+4,i,times);
         ++i;
       }
       //send EOS_1
-      set1(buf,515,513);
-      ann::Predict(tknn,buf,res,516,i,times);
+      set1(buf,atulocher_language_tensor_size+4,atulocher_language_tensor_size+1);
+      ann::Predict(tknn,buf,res,atulocher_language_tensor_size+4,i,times);
       ++i;
       //end
       for(auto it:target){
         Vector & vp=it.second;
-        for(int j=0;j<512;j++)buf[j]=vp.at(j);
-        ann::Predict(tknn,buf,res,516,i,times);
+        for(int j=0;j<atulocher_language_tensor_size;j++)buf[j]=vp.at(j);
+        ann::Predict(tknn,buf,res,atulocher_language_tensor_size+4,i,times);
         ++i;
       }
       //send EOS_2
-      set1(buf,515,514);
-      ann::Predict(tknn,buf,res,516,i,times);
+      set1(buf,atulocher_language_tensor_size+4,atulocher_language_tensor_size+2);
+      ann::Predict(tknn,buf,res,atulocher_language_tensor_size+4,i,times);
       ++i;
       //end
       //decode
       //receiving EOS_3
-      for(int k=0;k<516;k++)res[k]=0;
+      for(int k=0;k<atulocher_language_tensor_size+4;k++)res[k]=0;
       for(;i<times;i++){
-        ann::Predict(tknn,res,res,516,i,times);
-        //if(getmax(res,516)==515)break;//EOS_3
+        ann::Predict(tknn,res,res,atulocher_language_tensor_size+4,i,times);
+        //if(getmax(res,atulocher_language_tensor_size+4)==atulocher_language_tensor_size+3)break;//EOS_3
         if(
-          res[515]>res[514] &&
-          res[515]>res[513] &&
-          res[515]>res[512]
+          res[atulocher_language_tensor_size+3]>res[atulocher_language_tensor_size+2] &&
+          res[atulocher_language_tensor_size+3]>res[atulocher_language_tensor_size+1] &&
+          res[atulocher_language_tensor_size+3]>res[atulocher_language_tensor_size]
         )break;
-        doactivity(res,512);
+        doactivity(res,atulocher_language_tensor_size);
       }
     }
-    virtual void think(){
-      dct->compute();
-    }
+    virtual void doactivity(double * arr,int l)=0;
+    virtual void getkm(
+      const std::list<std::pair<std::string,std::string> > & kms,
+      std::vector<double> & arr,
+      int len,
+      std::string & key,
+      std::string & value)=0;
+    virtual void gettg(
+      const std::list<std::string> & kms,
+      std::vector<double> & arr,
+      int len,
+      std::string & key)=0;
   };
 }
 #endif

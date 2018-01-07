@@ -13,12 +13,12 @@ namespace atulocher{
       RakNet::BitStream res,ret;
       double buf;
       buf=data_size;     res<<buf;
-      buf=fd;            res<<buf;
+      buf=network;       res<<buf;
       buf=tm;            res<<buf;
       buf=maxlen;        res<<buf;
       int i;
       for(i=0;i<data_size;i++) res<<input_data[i];
-      rpc.call("PSPredict",res,ret);
+      rpc.call("PSPredict",&res,&ret);
       for(i=0;i<data_size;i++) ret>>output_data[i];
     }
     
