@@ -1,6 +1,6 @@
 #ifndef atulocher_language
 #define atulocher_language
-#include <psyc/psyc.h>
+#include "ann.hpp"
 #include <map>
 #include <list>
 #include <string>
@@ -32,20 +32,22 @@ namespace atulocher{
                                       kws;           //关键词
     sentree                           tree;          //句法树
     
-    PSNeuralNetwork                 * kmext,         //LSTM神经网络，抽取目标
-                                    * tknn;          //LSTM encoder-decoder模型，为精确思维做预处理(直观思维)
+    ann::FD                           kmext,         //LSTM神经网络，抽取目标
+                                      tknn;          //LSTM encoder-decoder模型，为精确思维做预处理(直观思维)
+    
     CRFPP::Tagger                   * senter,        //CRF模型，句法树构建
                                     * tagger;        //CRF模型，标注
     dectree::dectree                * dct;           //决策树，精确思维(逻辑思维)
     
     active                          * actives;
+    bool                              usedct;
     lang(){
     }
     ~lang(){
     }
     virtual void solve(const string & w){
-      if(tknn==NULL)return;
-      if(dct==NULL)return;
+      if(tknn==0)return;
+      if(dct==0)return;
       std::vector<cppjieba::KeywordExtractor::Word> kw;
       
       cutter->extractor.Extract(w,kw,5);
@@ -62,7 +64,7 @@ namespace atulocher{
       
       getkeymeans();
       prethink();
-      think();
+      if(usedct)think();
     }
     virtual void addkm(int i){
       Vector bufv(512);
@@ -104,7 +106,7 @@ namespace atulocher{
           if(j>=512)break;
           buf[j]=it[j];
         }
-        PSPredict(kmext,buf,res,512,i,times);
+        ann::Predict(kmext,buf,res,512,i,times);
 
         int max_idx=0;
         double max=0;
@@ -162,30 +164,30 @@ namespace atulocher{
         set1(buf,515,512);
         Vector & vp=it.second.first;
         for(int j=0;j<512;j++)buf[j]=vp.at(j);
-        PSPredict(tknn,buf,res,516,i,times);
+        ann::Predict(tknn,buf,res,516,i,times);
         ++i;
       }
       //send EOS_1
       set1(buf,515,513);
-      PSPredict(tknn,buf,res,516,i,times);
+      ann::Predict(tknn,buf,res,516,i,times);
       ++i;
       //end
       for(auto it:target){
         Vector & vp=it.second;
         for(int j=0;j<512;j++)buf[j]=vp.at(j);
-        PSPredict(tknn,buf,res,516,i,times);
+        ann::Predict(tknn,buf,res,516,i,times);
         ++i;
       }
       //send EOS_2
       set1(buf,515,514);
-      PSPredict(tknn,buf,res,516,i,times);
+      ann::Predict(tknn,buf,res,516,i,times);
       ++i;
       //end
       //decode
       //receiving EOS_3
       for(int k=0;k<516;k++)res[k]=0;
       for(;i<times;i++){
-        PSPredict(tknn,res,res,516,i,times);
+        ann::Predict(tknn,res,res,516,i,times);
         //if(getmax(res,516)==515)break;//EOS_3
         if(
           res[515]>res[514] &&

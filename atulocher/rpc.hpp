@@ -1,197 +1,150 @@
 #ifndef atulocher_rpc
 #define atulocher_rpc
-#include "dmsg.hpp"
+#include <map>
+#include <set>
 #include <string>
+#include <atomic>
+#include <unordered_map>
+#include <raknet/RPC4Plugin.h>
+#include <raknet/RakPeerInterface.h>
+#include <stdio.h>
+#include <raknet/Kbhit.h>
+#include <string.h>
+#include <stdlib.h>
+#include <raknet/RakSleep.h>
+#include <raknet/BitStream.h>
+#include <raknet/MessageIdentifiers.h>
+#include <raknet/Gets.h>
 namespace atulocher{
-  namespace rpc{
-    using namespace std;
-    struct nint32{
-      int32_t value;
-      nint32(){
-        value=0;
-      }
-      nint32(int32_t v){
-        value=htonl(v);
-      }
-      nint32 & operator=(int32_t v){
-        value=htonl(v);
-        return *this;
-      }
-      nint32(const nint32 & v){
-        value=v.value;
-      }
-      nint32 & operator=(const nint32 & v){
-        value=v.value;
-        return *this;
-      }
-      int32_t val(){
-        return ntohl(value);
-      }
-      int32_t operator()(){
-        return val();
-      }
-    };
-    struct Header{
-      int32_t id,len;
-    };
-    class MsgServer:public Dmsg_server{
-      private:
-      struct CliInfo{
-        char * buf;
-        int len,ptr,id,fd;
-        MsgServer * owner;
-        void init(int l){
-          buf=(char*)malloc(l);
-          len=l;
-          ptr=0;
+  class RPC_Server{
+    public:
+    RakNet::RPC4               rpc;
+    RakNet::RakPeerInterface * rakPeer;
+    RakNet::SocketDescriptor   sd1;
+    std::atomic<bool> running;
+    
+    inline void RegisterSlot(const char * name,void(*callback)(RakNet::BitStream*,RakNet::Packet*)){
+      rpc.RegisterSlot(name,callback,0);
+    }
+    inline void RegisterBlockingFunction(const char * name,void(*callback)(RakNet::BitStream*,RakNet::BitStream*,RakNet::Packet*)){
+      rpc.RegisterBlockingFunction(name,callback);
+    }
+    RPC_Server(int port):sd1(port,0),rpc(){
+      rakPeer=RakNet::RakPeerInterface::GetInstance();
+      rakPeer->Startup(8,&sd1,1);
+      rakPeer->SetMaximumIncomingConnections(8);
+      rakPeer->AllowConnectionResponseIPMigration(false);
+      rakPeer->AttachPlugin(&rpc);
+    }
+    ~RPC_Server(){
+      rakPeer->Shutdown(100,0);
+      RakNet::RakPeerInterface::DestroyInstance(rakPeer);
+    }
+    
+    virtual void stop(){
+      running=false;
+    }
+    virtual void run(){
+      running=true;
+      RakNet::Packet *packet;
+      while (running){
+        RakSleep(100);
+        for (packet=rakPeer->Receive(); packet; rakPeer->DeallocatePacket(packet), packet=rakPeer->Receive()){
+          if(!running)return;
         }
-        void destroy(){
-          if(buf)free(buf);
-          len=0;
-          ptr=0;
-          buf=NULL;
-        }
-        bool finish(){
-          if(ptr>=len)
-            return true;
-          else
-            return false;
-        }
-        void append(char c){
-          //if(finish())return;
-          buf[ptr]=c;
-          ptr++;
-        }
-        #define autocheck \
-          if(finish()){\
-            callfunc();\
-            destroy();\
-            return;\
-          }
-        void add(void * pk){
-          if(owner==NULL)return;
-          auto bf=(char*)pk;
-          if(len==0){
-            
-            auto hd=(Header*)pk;
-            id=hd->id;
-            
-            #ifdef DEBUG
-            printf("begin id=%x\n",id);
-            printf("init:%x\n",hd->len);
-            
-            printf("data:");
-            for(int i=0;i<ATU_CHUNK_SIZE;i++)
-              printf("%c",bf[i]);
-            printf("\n");
-            #endif
-            
-            auto it=owner->funcs.find(id);
-            if(it== owner->funcs.end())return;
-            
-            int tmplen;
-            if(it->second->maxlen < hd->len)
-              tmplen=it->second->maxlen;
-            else
-              tmplen=hd->len;
-            
-            this->init(tmplen);
-            return;
-          }
-          
-          for(int i=0;i<ATU_CHUNK_SIZE;i++){
-            autocheck;
-            append(bf[i]);
-          }
-          autocheck;
-        }
-        #undef autocheck
-        void callfunc(){
-          if(owner==NULL)return;
-          auto it=owner->funcs.find(id);
-          if(it== owner->funcs.end())return;
-          it->second->func(buf,len,fd);
-        }
-      };
+      }
+    }
+  };
+  class RPC{
+    public:
+    class remote{//server config
       public:
-      class callback{
-        public:
-        int maxlen;
-        virtual void func(void*,int,int)=0;
-      };
-      private:
-      map<int,CliInfo> clis;
-      map<int,callback*> funcs;
-      public:
-      void add(int id,callback * cb){
-        funcs[id]=cb;
+      RakNet::RPC4               rpc;
+      RakNet::RakPeerInterface * rakPeer;
+      RakNet::SocketDescriptor   sd1;
+      
+      remote(const char * ip,int port):rpc(),sd1(0,0){
+       rakPeer=RakNet::RakPeerInterface::GetInstance();
+       rakPeer->Startup(8,&sd1,1);
+       rakPeer->SetMaximumIncomingConnections(8);
+       rakPeer->AllowConnectionResponseIPMigration(false);
+       rakPeer->AttachPlugin(&rpc);
+       rakPeer->Connect(ip, port, 0, 0);
       }
-      private:
-      virtual void onGetMessage(node * p,int fd,int sessid){
-        #ifdef DEBUG
-        printf("onmsg:%d\n",sessid);
-        #endif
-        begin:
-        auto it=clis.find(sessid);
-        if(it==clis.end()){
-          initcli(sessid);
-          goto begin;
-        }
-        it->second.add(p->data);
+      
+      ~remote(){
+        rakPeer->Shutdown(100,0);
+        RakNet::RakPeerInterface::DestroyInstance(rakPeer);
       }
-      virtual void onLogin(int id){
-        #ifdef DEBUG
-        printf("login:%d\n",id);
-        #endif
-        initcli(id);
-      }
-      virtual void initcli(int id){
-        CliInfo & p=clis[id];
-        p.fd=getfdbysid(id);
-        p.id=id;
-        p.len=0;
-        p.ptr=0;
-        p.buf=NULL;
-        p.owner=this;
-      }
-      virtual void onLogout(int id){
-        #ifdef DEBUG
-        printf("logout:%d\n",id);
-        #endif
-        auto it=clis.find(id);
-        if(it==clis.end())return;
-        it->second.destroy();
-        clis.erase(it);
-      }
+      
     };
-    class MsgClient:public Dmsg_client{
+    class function{
       public:
-      MsgClient(const char * addr,u_short port):Dmsg_client(addr,port){}
-      virtual void call(int id,void * buf,int len){
-        int ptr=0;
-        auto cbuf=(char*)buf;
-        node nbuf;
-        nbuf.len=ATU_CHUNK_SIZE;
-        
-        auto hd=(Header*)nbuf.data;
-        bzero(nbuf.data,ATU_CHUNK_SIZE);
-        hd->id=id;
-        hd->len=len;
-        sendMsg(&nbuf);
-        
-        while(1){
-          if(ptr>=len)break;
-          bzero(nbuf.data,ATU_CHUNK_SIZE);
-          for(int i=0;i<ATU_CHUNK_SIZE;i++){
-            if(ptr>=len)break;
-            nbuf.data[i]=cbuf[ptr];
-            ++ptr;
-          }
-          sendMsg(&nbuf);
-          
+      remote * server;
+      std::string name;
+      bool blocking;
+      void call(RakNet::BitStream *bitStream, RakNet::BitStream *returnData=NULL){
+        if(blocking){
+          if(bitStream ==NULL)return;
+          if(returnData==NULL)return;
+          server->rpc.CallBlocking(
+            name.c_str(),
+            bitStream,
+            HIGH_PRIORITY,
+            RELIABLE_ORDERED,
+            0,
+            server->rakPeer->GetSystemAddressFromIndex(0),
+            returnData
+          );
+        }else{
+          if(bitStream ==NULL)return;
+          server->rpc.Signal(
+            name.c_str(),
+            bitStream,
+            HIGH_PRIORITY,
+            RELIABLE_ORDERED,
+            0,
+            server->rakPeer->GetSystemAddressFromIndex(0),
+            false,
+            true
+          );
         }
       }
     };
-  }
+    std::unordered_map<std::string,remote*> remotes;
+    std::unordered_map<std::string,function> funcs;
+    RPC(){
+      for(auto it:remotes){
+        delete it.second;
+      }
+    }
+    void add(const std::string & sv,int pt,const std::string name,bool bk=true){
+      char nms[128];
+      snprintf(nms,128,"%s:%d",sv.c_str(),pt);
+      auto it=remotes.find(nms);
+      remote * rpt;
+      
+      if(it==remotes.end()){//add server list
+        rpt=new remote(sv.c_str(),pt);
+        remotes[nms]=rpt;
+      }else{
+        rpt=it->second;
+      }
+      
+      //add func list
+      function & fp=funcs[name];
+      fp.server=rpt;
+      fp.name=name;
+      fp.blocking=bk;
+    }
+    void call(std::string name,RakNet::BitStream *bitStream, RakNet::BitStream *returnData=NULL){
+      auto it=funcs.find(name);
+      if(it==funcs.end())return;
+      it->second.call(bitStream,returnData);
+    }
+  };
+  #ifndef ATU_AS_SERVER
+  RPC rpc;
+  #endif
 }
 #endif

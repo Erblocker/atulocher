@@ -9,6 +9,8 @@ atulocher，读作/ætʌlɔ:'kər/，为auto-launcher重组的单词。意为“
 * 逻辑推理  
 ## 依赖包：  
 * crfpp  
+* psychic  
+* raknet  
 * openBLAS  
 * gcc(>=4.8)  
 * make  
