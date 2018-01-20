@@ -24,7 +24,7 @@ namespace atulocher{
     word2vec * paser,
              * conver;
     std::map<
-      std::string,std::pair<Vector,std::string>
+      std::string,std::pair<Vector,std::vector<std::string> >
     >                                 keymeans;      //已知
     std::map<std::string,Vector>      target;        //求解
     std::list<Vector>                 sent,          //句子的词语  (vector)
@@ -64,14 +64,16 @@ namespace atulocher{
     virtual void addkm(int i){
       Vector bufv(atulocher_language_tensor_size);
       auto pts=tree.allnode[i];
-      std::string bufkm1,bufkm2;
+      std::string bufkm1;
+      std::vector<std::string> bufkm2;
       std::list<std::pair<std::string,std::string> > bufw;
+      
       pts->foreach([](const sentree::node * n,void * arg){
         auto bufw=(std::list<std::pair<std::string,std::string> >*)arg;
         bufw->push_back(std::pair<std::string,std::string>(n->value,n->wordTag));
       },&bufw);
       this->getkm(bufw,bufv,atulocher_language_tensor_size,bufkm1,bufkm2);
-      keymeans[bufkm1]=std::pair<Vector,std::string>(bufv,bufkm2);
+      keymeans[bufkm1]=std::pair<Vector,std::vector<std::string>>(bufv,bufkm2);
     }
     virtual void addtg(int i){
       Vector bufv(atulocher_language_tensor_size);
@@ -192,7 +194,7 @@ namespace atulocher{
       std::vector<double> & arr,
       int len,
       std::string & key,
-      std::string & value)=0;
+      std::vector<std::string> & value)=0;
     virtual void gettg(
       const std::list<std::string> & kms,
       std::vector<double> & arr,

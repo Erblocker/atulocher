@@ -324,6 +324,35 @@ namespace atulocher{
           len;
       int deep,k;
       int parent,left,right;
+      int data;
+      inline double getDiv(int ik){
+        return position[k]+(len[k]/2);
+      }
+      inline double getLeftBegin(int ck)const{
+        return position[ck];
+      }
+      inline double getRightBegin(int ck)const{
+        return position[ck]+(len[ck]/2);
+      }
+      inline double getChildLen(int ck)const{
+        return len[ck]/2;
+      }
+      inline void getLeftPosition(vec & pv,vec & pl)const{
+        int tk=this->k;
+        pl=this->len;
+        pl[tk]*=0.5;
+        pv=this->position;
+      }
+      inline void getRightPosition(vec & pv,vec & pl)const{
+        int tk=this->k;
+        pl=this->len;
+        pl[tk]*=0.5;
+        pv=this->position;
+        pv[tk]+=this->len[tk]/2;
+      }
+      inline double getDiv()const{
+        return position[k]+(len[k]/2);
+      }
       void encode(std::string & s,int mk)const{
         s.clear();
         std::ostringstream iss(s);
@@ -336,6 +365,7 @@ namespace atulocher{
         iss<<left;
         iss<<right;
         iss<<parent;
+        iss<<data;
       }
       void decode(const std::string & s,int mk){
         std::istringstream iss(s);
@@ -350,6 +380,7 @@ namespace atulocher{
         iss>>left;
         iss>>right;
         iss>>parent;
+        iss>>data;
       }
       /*
         encode:
@@ -361,6 +392,12 @@ namespace atulocher{
           parent
       */
     };
+    inline int getNextK(int tk){
+      if(tk+1==this->k)
+        return 0;
+      else
+        return tk+1;
+    }
     void setNode(int nid,const node & n){
       char key[128];
       snprintf(key,128,"dct_%s_node_%d",name.c_str(),nid);
@@ -377,8 +414,80 @@ namespace atulocher{
       n.decode(v,this->k);
       return true;
     }
-    void createLeft(const node & n,int id){
+    void createLeft(node & n,int tid,int data){
+      if(n.left!=0)return;
+      int nid=this->id;
+      updateId();
+      node child;
+      //set child
+        n.getLeftPosition(child.position,child.len);
+        child.deep=n.deep+1;
+        child.k=this->getNextK(n.k);
+        child.data=0;
+        //set link
+        child.left=-1;
+        child.right=-1;
+        child.parent=tid;
+      //end
+      setNode(nid,child);
       
+      //set this
+        n.left=nid;
+      //end
+      setNode(tid,n);
+    }
+    bool createLeft(int tid,int data=0){
+      node n;
+      if(!getNode(tid,n))return false;
+      createLeft(n,tid,data);
+      return true;
+    }
+    void createRight(node & n,int tid,int data){
+      if(n.right!=0)return;
+      int nid=this->id;
+      updateId();
+      node child;
+      //set child
+        n.getRightPosition(child.position,child.len);
+        child.deep=n.deep+1;
+        child.k=this->getNextK(n.k);
+        child.data=data;
+        //set link
+        child.left=-1;
+        child.right=-1;
+        child.parent=tid;
+      //end
+      setNode(nid,child);
+      
+      //set this
+        n.right=nid;
+      //end
+      setNode(tid,n);
+    }
+    bool createRight(int tid,int data=0){
+      node n;
+      if(!getNode(tid,n))return false;
+      createRight(n,tid,data);
+      return true;
+    }
+    void insert(const vec & position,int nid,int ptr){
+      node buf;
+      auto np=&buf;
+      if(getNode(nid,*np)){
+        double dv=np->getDiv();
+        if(np->data){
+          //insert();
+        }
+        if(position[np->k]<dv){
+          //left
+          
+        }else{
+          //right
+          
+        }
+      }else{
+        return;
+      }
     }
   };
 }

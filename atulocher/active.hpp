@@ -4,6 +4,7 @@
 #include <sstream>
 #include "language.hpp"
 #include "rpc.hpp"
+#include "actscript.hpp"
 namespace atulocher{
   class active:public lang{
     public:
@@ -59,20 +60,13 @@ namespace atulocher{
       for(int i=0;i<len;i++)ret>>arr[i];
       ret>>key;
     }
-    void getVal(
-      const std::list<std::string> & wds,
-      std::string & key){
-      
-    }
-    virtual void doactivity(double * arr,int l){
-      
-    }
+    
     virtual void getkm(
       const std::list<std::pair<std::string,std::string> > & kms,
       std::vector<double> & arr,
       int len,
       std::string & key,
-      std::string & value){
+      std::vector<std::string> & value){
       char buf[1024];
       if(tagger==NULL)return;
       tagger->clear();
@@ -84,7 +78,8 @@ namespace atulocher{
         tagger->add(buf);
       }
       if(!tagger->parse())return;
-      std::list<std::string> objs,tags;
+      std::list<std::string> objs;
+      std::vector<std::string> tags;
       auto it=kms.begin();
       std::string predict;
       for (size_t i = 0; i < tagger->size(); ++i) {
@@ -101,7 +96,7 @@ namespace atulocher{
         it++;
       }
       getObj(objs,arr,len,key);
-      getVal(tags,value);
+      value=tags;
     }
     virtual void gettg(
       const std::list<std::string> & kms,
@@ -109,6 +104,10 @@ namespace atulocher{
       int len,
       std::string & key){
       getObj(kms,arr,len,key);
+    }
+    
+    virtual void doactivity(double * arr,int l){
+      
     }
   };
 }

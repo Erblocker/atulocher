@@ -2,6 +2,7 @@
 #define yrssf_atulocher_luapool
 #include <mutex>
 #include <list>
+#include <set>
 extern "C" {
 #include <lua.h>
 #include <lualib.h>
@@ -9,7 +10,7 @@ extern "C" {
 }
 namespace atulocher{
   namespace luapool{
-    std::list< void(*)(lua_State*) > reg;
+    std::set< void(*)(lua_State*) > reg;
     void initstate(lua_State * L){
       auto it=reg.begin();
       for(;it!=reg.end();it++){

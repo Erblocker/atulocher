@@ -15,6 +15,9 @@ atulocher :utils.hpp.gch \
            rpc.hpp.gch
 	$(CC) main.cpp -ldl -llua -lpthread 
 
+actscript.hpp.gch : actscript.hpp
+	$(CC) actscript.hpp
+
 rpc.hpp.gch : rpc.hpp
 	$(CC) rpc.hpp
 
@@ -54,7 +57,7 @@ kmeans.hpp.gch : kmeans.hpp
 GPU.hpp.gch : GPU.hpp
 	$(CC) GPU.hpp
 
-active.hpp.gch : active.hpp bayes.hpp.gch language.hpp.gch
+active.hpp.gch : active.hpp bayes.hpp.gch language.hpp.gch actscript.hpp.gch
 	$(CC) active.hpp
 
 bayes.hpp.gch : bayes.hpp
