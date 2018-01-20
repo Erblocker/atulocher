@@ -15,37 +15,45 @@ typedef vector<double> Vector;
 
 static void creategraph(RakNet::BitStream * res,
                         RakNet::BitStream * ret,
-                        RakNet::Packet*){//name:creategraph
+                        RakNet::Packet*){
 }
 
 static void destroygraph(RakNet::BitStream * res,
                          RakNet::BitStream * ret,
-                         RakNet::Packet*){//name:destroygraph
+                         RakNet::Packet*){
   
 }
 
 static void find(RakNet::BitStream * res,
                  RakNet::BitStream * ret,
-                 RakNet::Packet*){//name:find
+                 RakNet::Packet*){
   
 }
 
 static void add(RakNet::BitStream * res,
                 RakNet::BitStream * ret,
-                RakNet::Packet*){//name:add
+                RakNet::Packet*){
   
 }
 
 static void del(RakNet::BitStream * res,
                 RakNet::BitStream * ret,
-                RakNet::Packet*){//name:del
+                RakNet::Packet*){
   
 }
+
+static void getobj(RakNet::BitStream * res,
+                   RakNet::BitStream * ret,
+                   RakNet::Packet*){
+  
+}
+
 int main(){
-  server.RegisterBlockingFunction("add",add);
-  server.RegisterBlockingFunction("del",del);
-  server.RegisterBlockingFunction("find",find);
-  server.RegisterBlockingFunction("creategraph",creategraph);
-  server.RegisterBlockingFunction("destroygraph",destroygraph);
+  server.RegisterBlockingFunction("mind_add",add);
+  server.RegisterBlockingFunction("mind_del",del);
+  server.RegisterBlockingFunction("mind_find",find);
+  server.RegisterBlockingFunction("mind_create",creategraph);
+  server.RegisterBlockingFunction("mind_destroy",destroygraph);
+  server.RegisterBlockingFunction("mind_getobj",getobj);
   server.run();
 }

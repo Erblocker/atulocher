@@ -1,20 +1,63 @@
 #ifndef atulocher_active
 #define atulocher_active
 #include <crfpp.h>
+#include <sstream>
 #include "language.hpp"
+#include "rpc.hpp"
 namespace atulocher{
   class active:public lang{
     public:
     CRFPP::Tagger * tagger;
-    void getActName(const double * arr,int len,std::string & name){
-      
+    int fd;
+    void remote_init(){
+      RakNet::BitStream res,ret;
+      res<<fd;
+      rpc.call("mind_create",&res,&ret);
     }
+    void remote_destroy(){
+      RakNet::BitStream res,ret;
+      res<<fd;
+      rpc.call("mind_destroy",&res,&ret);
+    }
+    void remote_add(const std::list<std::string> & wds){
+      RakNet::BitStream res,ret;
+      std::string resstr;
+      char fdstr[32];
+      
+      snprintf(fdstr,32,"%d ",fd);
+      resstr=fdstr;
+      for(auto it:wds)resstr+=(it+" ");
+      
+      res.WriteCompressed(resstr.c_str());
+      rpc.call("mind_add",&res,&ret);
+    }
+    void remote_find(const std::set<int> & cond){
+      RakNet::BitStream res,ret;
+      res<<fd;
+      for(auto it:cond)res<<it;
+      rpc.call("mind_find",&res,&ret);
+    }
+    
     void getObj(
       const std::list<std::string> & wds,
       std::vector<double> & arr,
       int len,
       std::string & key
       ){
+      RakNet::BitStream res,ret;
+      char hd[128];
+      
+      snprintf(hd,128,"%d %d ",fd,len);
+      std::string resstr=hd;
+      
+      for(auto it:wds)resstr+=(it+" ");
+      
+      res.WriteCompressed(resstr.c_str());
+      rpc.call("mind_getobj",&res,&ret);
+      
+      arr.resize(len);
+      for(int i=0;i<len;i++)ret>>arr[i];
+      ret>>key;
     }
     void getVal(
       const std::list<std::string> & wds,
@@ -22,7 +65,7 @@ namespace atulocher{
       
     }
     virtual void doactivity(double * arr,int l){
-       
+      
     }
     virtual void getkm(
       const std::list<std::pair<std::string,std::string> > & kms,
