@@ -3,11 +3,7 @@
 #include <mutex>
 #include <list>
 #include <set>
-extern "C" {
-#include <lua.h>
-#include <lualib.h>
-#include <lauxlib.h>
-}
+#include "utils.hpp"
 namespace atulocher{
   namespace luapool{
     std::set< void(*)(lua_State*) > reg;

@@ -1,11 +1,10 @@
-CC=g++ -std=c++0x -I ../leveldb/include -I ../ 
+CC=g++ -std=c++0x -I ../ 
 
 all : atulocher
 	
 atulocher :utils.hpp.gch \
            module.hpp.gch \
            matht.hpp.gch \
-           graph.hpp.gch \
            language.hpp.gch \
            active.hpp.gch \
            tctree.hpp.gch \
@@ -13,7 +12,7 @@ atulocher :utils.hpp.gch \
            kbtree.hpp.gch \
            triemap.hpp.gch \
            rpc.hpp.gch
-	$(CC) main.cpp -ldl -llua -lpthread 
+	
 
 actscript.hpp.gch : actscript.hpp
 	$(CC) actscript.hpp
@@ -41,9 +40,6 @@ kbtree.hpp.gch : kbtree.hpp
 
 utils.hpp.gch : utils.hpp
 	$(CC) utils.hpp
-
-graph.hpp.gch : graph.hpp
-	$(CC) graph.hpp
 
 matht.hpp.gch : matht.hpp
 	$(CC) matht.hpp
@@ -78,13 +74,10 @@ language.hpp.gch : language.hpp word2vec.hpp.gch sentree.hpp.gch
 sentree.hpp.gch : sentree.hpp
 	$(CC) sentree.hpp
 
-ksphere.hpp.gch : ksphere.hpp octree.hpp.gch rand.hpp.gch kmeans.hpp.gch
-	$(CC) ksphere.hpp
-
 luapool.hpp.gch : luapool.hpp
 	$(CC) luapool.hpp
 
-word2vec.hpp.gch : word2vec.hpp ksphere.hpp.gch
+word2vec.hpp.gch : word2vec.hpp 
 	$(CC) word2vec.hpp
 
 module.hpp.gch : module.hpp luapool.hpp.gch

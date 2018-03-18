@@ -13,12 +13,12 @@ namespace atulocher{
     void remote_init(){
       RakNet::BitStream res,ret;
       res<<fd;
-      rpc.call("mind_create",&res,&ret);
+      rpc.call("graph_create",&res,&ret);
     }
     void remote_destroy(){
       RakNet::BitStream res,ret;
       res<<fd;
-      rpc.call("mind_destroy",&res,&ret);
+      rpc.call("graph_destroy",&res,&ret);
     }
     void remote_add(const std::list<std::string> & wds){
       RakNet::BitStream res,ret;
@@ -30,13 +30,13 @@ namespace atulocher{
       for(auto it:wds)resstr+=(it+" ");
       
       res.WriteCompressed(resstr.c_str());
-      rpc.call("mind_add",&res,&ret);
+      rpc.call("graph_add",&res,&ret);
     }
     void remote_find(const std::set<int> & cond){
       RakNet::BitStream res,ret;
       res<<fd;
       for(auto it:cond)res<<it;
-      rpc.call("mind_find",&res,&ret);
+      rpc.call("graph_find",&res,&ret);
     }
     
     void getObj(
@@ -54,7 +54,7 @@ namespace atulocher{
       for(auto it:wds)resstr+=(it+" ");
       
       res.WriteCompressed(resstr.c_str());
-      rpc.call("mind_getobj",&res,&ret);
+      rpc.call("objs_getobj",&res,&ret);
       
       arr.resize(len);
       for(int i=0;i<len;i++)ret>>arr[i];

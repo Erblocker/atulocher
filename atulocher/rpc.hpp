@@ -26,7 +26,10 @@ namespace atulocher{
     inline void RegisterSlot(const char * name,void(*callback)(RakNet::BitStream*,RakNet::Packet*)){
       rpc.RegisterSlot(name,callback,0);
     }
-    inline void RegisterBlockingFunction(const char * name,void(*callback)(RakNet::BitStream*,RakNet::BitStream*,RakNet::Packet*)){
+    inline void RegisterBlockingFunction(
+        const char * name,
+        void(*callback)(RakNet::BitStream*,RakNet::BitStream*,RakNet::Packet*)
+    ){
       rpc.RegisterBlockingFunction(name,callback);
     }
     RPC_Server(int port):sd1(port,0),rpc(){
