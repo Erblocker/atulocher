@@ -2,6 +2,7 @@
 #define atulocher_searchbuffer
 #include "mempool.hpp"
 #include "bayes.hpp"
+#include "object.hpp"
 #include <set>
 #include <map>
 #include <list>
@@ -10,6 +11,7 @@
 #include <stdlib.h>
 #include <string>
 #include <algorithm>
+#include "actscript.hpp"
 namespace atulocher{
     class searchbuffer{
         public:
@@ -25,19 +27,40 @@ namespace atulocher{
                 friend class searchbuffer;
                 protected:
                     element     *       next;
-                public:
                     std::string         name;
+                public:
                     std::string         val;
                     std::set<element*>  depend;
+                    int                 activity;
+                    atuobj::object      obj;
+                    class Info:public actscript::dataInfo{
+                        public:
+                        element * self;
+                        virtual void getDepend(void(*cb)(const dataInfo*,void*),void *arg){
+                            for(auto it:self->depend){
+                                if(it)
+                                    cb(&(it->info),arg);
+                            }
+                        }
+                    }info;
                 protected:
                     void construct(){
                         name.clear();
                         val.clear();
+                        obj.clear();
                         depend.clear();
+                        activity=-1;
+                        
+                        info=Info();
+                        info.name=&name;
+                        info.val =&val;
+                        info.obj =&obj;
+                        info.self=this;
                     }
                     void destruct(){
                         name.clear();
                         val.clear();
+                        obj.clear();
                         depend.clear();
                     }
             };
@@ -173,6 +196,18 @@ namespace atulocher{
             int waitforsolve;
             int lastdeep;
         public:
+            inline const std::map<std::string,element*> & getDatas(){
+                return datas;
+            }
+            inline const std::map<std::string,bool> & getTargets(){
+                return targets;
+            }
+            inline void updateTarget(const std::string & str){
+                if(datas.find(str)==datas.end())
+                    setTarget(str,false);
+                else
+                    setTarget(str,true);
+            }
             inline void setTarget(const std::string & str,bool m=false){
                 auto it=this->targets.find(str);
                 if(it==this->targets.end()){
