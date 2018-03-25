@@ -59,7 +59,6 @@ namespace atulocher{
       tree.buildTree(this->senter);
       
       getkeymeans();
-      think();
     }
     virtual void addkm(int i){
       Vector bufv(atulocher_language_tensor_size);
